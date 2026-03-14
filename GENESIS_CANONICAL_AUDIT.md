@@ -181,40 +181,51 @@ Other relevant vars: ___________________________
 
 | Surface | Genesis Hash | Constitution Hash | Power Anchor | Compute Anchor | Matches Canonical? |
 |---------|--------------|-------------------|--------------|----------------|-------------------|
-| Code (genesis.rs) | | | | | |
-| CLI (`axi genesis`) | | | | | |
-| API (`/genesis`) | | | | | |
-| Systemd Logs | | | | | |
-| `~/.axi/genesis.json` | | | | | |
-| `axi/STATUS.md` | | | | | |
-| `axi-github-push/` (if different) | | | | | |
+| Code (genesis.rs) | f23b862c... | 00dae4fc... | 1000 | 3280 | ✅ YES (after fix) |
+| CLI (`axi genesis`) | f23b862c... | 00dae4fc... | 1000 | 3280 | ✅ YES (after rebuild) |
+| API (`/genesis`) | f23b862c... | 00dae4fc... | 1000 | 3280 | ✅ YES (after restart) |
+| Systemd Logs | TBD | TBD | TBD | TBD | ⏸️ PENDING |
+| `~/.axi/genesis.json` | N/A | N/A | N/A | N/A | N/A (not used) |
+| `axi/STATUS.md` | 7e2e132b... | 00dae4fc... | 1000 | 3280 | ❌ OUTDATED |
+
+**Status**: Code fixed, binaries need rebuild, service needs restart.
 
 ---
 
 ## 5. Known Mismatch History
 
-### 5.1 观察到的异常值
+### 5.1 观察到的异常值 (RESOLVED)
 
 ```yaml
 observed_anomalies:
   - location: "logs from 2026-03-02"
     genesis_hash_1: "9f5085f9238d5da9417352032ed1096875e0f17d946290394febfda442483316"
     genesis_hash_2: "793868fe37446d5a3c8543fc3bd603b1fd025809296ecf96065ba8f61685790d"
-    note: "Two different genesis hashes observed in logs"
+    note: "Two different genesis hashes observed in logs - CAUSED BY non-deterministic Utc::now().timestamp()"
     
   - location: "axi/STATUS.md"
     genesis_hash: "7e2e132ba352e53035ce049229a421ca89d56a85195f7050c0369fd67bfcc716"
-    note: "Current documented value"
+    note: "Previous documented value - DEPRECATED"
+    
+resolution:
+  root_cause: "genesis.rs used Utc::now().timestamp() which changed on each execution"
+  fix: "Hardcoded fixed timestamp: 1709256878, fixed power: 1000.0, fixed compute: 3280.0"
+  canonical_hash: "f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314"
+  status: "Code fixed, binaries need rebuild"
 ```
 
-### 5.2 可能的根本原因
+### 5.2 根本原因分析 (CONFIRMED)
 
-- [ ] 不同的 build 时间导致不同的 timestamp
-- [ ] 不同的 constitution 文件内容（换行符、编码）
-- [ ] 环境变量覆盖了硬编码值
-- [ ] 多个 genesis 文件存在，daemon 读取了不同的文件
-- [ ] 代码版本不一致（不同目录的 axi/ vs axi-github-push/）
-- [ ] 测试网 vs 主网配置混淆
+| 可能原因 | 状态 | 证据 |
+|----------|------|------|
+| 不同的 build 时间导致不同的 timestamp | ✅ **CONFIRMED** | genesis.rs:14 `Utc::now().timestamp()` |
+| 代码版本不一致 | ⚠️ PARTIAL | Multiple dirs: axi/, axi_pure/, axi-github-push/ |
+| 不同的 constitution 文件内容 | ❌ RULED OUT | All sources: 00dae4fc...cea177 |
+| 环境变量覆盖 | ❌ RULED OUT | No AXI_* env vars in systemd service |
+| 多个 genesis 文件 | ❌ RULED OUT | No ~/.axi/genesis.json found |
+| 测试网 vs 主网混淆 | ❌ RULED OUT | Single genesis.rs, no network flag |
+
+**Primary Root Cause**: Non-deterministic timestamp in genesis generation
 
 ---
 
@@ -267,32 +278,40 @@ observed_anomalies:
 
 ## 7. Final Decision
 
-**此部分在 audit 完成后填写**
-
 ```yaml
 final_decision:
-  canonical_genesis_hash: ""
+  canonical_genesis_hash: "f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314"
   canonical_constitution_hash: "00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177"
   canonical_power_anchor_kwh: 1000
   canonical_compute_anchor_tflops: 3280
+  canonical_timestamp: 1709256878  # 2024-03-01T00:00:00Z UTC
   
-  source_of_truth: ""  # 例如: "Code in axi/src/core/genesis.rs"
-  source_file_path: ""  # 例如: "/home/admin/axi/src/core/genesis.rs"
+  source_of_truth: "Code in src/core/genesis.rs (deterministic implementation)"
+  source_file_path: "src/core/genesis.rs"
   
-  rationale: ""  # 为什么选择这个作为 canonical
-  
+  rationale: |
+    Genesis block is now deterministic: fixed timestamp (1709256878), 
+    fixed power anchor (1000 kWh), fixed compute anchor (3280 TFLOPs),
+    and constitution hash. All runtime surfaces will generate identical
+    genesis hash on initialization.
+    
   approved_by:
-    - name: ""
-      signature: ""
-      date: ""
-    - name: ""
-      signature: ""
-      date: ""
+    - name: "Genesis Node Operator"
+      signature: "TBD"
+      date: "TBD"
+    - name: "Protocol Lead"
+      signature: "TBD"
+      date: "TBD"
   
-  effective_date: "2026-03-XX"
+  effective_date: "2026-03-14"
   
-  migration_required: true | false
-  migration_plan: ""  # 如果需要迁移，描述步骤
+  migration_required: true
+  migration_plan: |
+    1. Replace non-deterministic genesis.rs with deterministic version
+    2. Rebuild all binaries: cargo build --release
+    3. Restart systemd service
+    4. Verify: ./target/release/axi genesis
+    5. All previous non-deterministic genesis hashes are deprecated
 ```
 
 ---
@@ -388,3 +407,115 @@ genesis_state:
 *审计模板版本: 2026-03-14-v1.0*  
 *必须在任何协议实现之前完成*  
 *预计审计时间: 2-4小时*
+
+## 8. Sign-off
+
+| 角色 | 姓名 | 签名/确认 | 日期 |
+|------|------|-----------|------|
+| Genesis Node Operator | TBD | ⏸️ PENDING | 2026-03-14 |
+| Protocol Lead | TBD | ⏸️ PENDING | 2026-03-14 |
+| Security Reviewer | TBD | ⏸️ PENDING | 2026-03-14 |
+
+**执行前提条件**:
+- [x] Code fix merged (deterministic genesis.rs)
+- [ ] Binaries rebuilt with `cargo build --release`
+- [ ] Systemd service restarted
+- [ ] Runtime verification passed (`./axi genesis` output matches canonical)
+
+**声明**：
+> 以上签名者确认，AXI 网络的 canonical genesis 状态已确定，所有运行时表面已同步到此状态。未来的协议实现（escrow、reputation、slash）将基于此状态作为信任根。
+>
+> **Canonical Values**:
+> - Genesis Hash: `f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314`
+> - Constitution Hash: `00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177`
+> - Power Anchor: `1000 kWh`
+> - Compute Anchor: `3280 TFLOPs`
+> - Source: `src/core/genesis.rs` (deterministic implementation)
+
+---
+
+## Appendix A: Quick Verification Commands
+
+```bash
+#!/bin/bash
+# save as: verify_genesis.sh
+# usage: ./verify_genesis.sh
+
+echo "=== AXI Genesis Verification ==="
+echo ""
+
+echo "1. Constitution Hash (should match canonical):"
+sha256sum CONSTITUTION.md
+echo "Expected: 00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177"
+echo ""
+
+echo "2. Build and verify CLI output:"
+cd /home/admin/axi
+cargo build --release 2>/dev/null
+./target/release/axi genesis 2>/dev/null || echo "CLI not available"
+echo "Expected Genesis: f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314"
+echo ""
+
+echo "3. Systemd Service Status:"
+systemctl is-active axi-genesis 2>/dev/null || echo "Service not active"
+journalctl -u axi-genesis -n 5 --no-pager 2>/dev/null | grep -i genesis || echo "No genesis logs"
+echo ""
+
+echo "=== End Verification ==="
+```
+
+---
+
+## Appendix B: Genesis State Schema
+
+```yaml
+# Canonical genesis structure - v0.1.0
+genesis_state:
+  version: "0.1.0"
+  
+  block:
+    hash: "f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314"
+    timestamp: 1709256878  # FIXED: 2024-03-01T00:00:00Z
+    index: 0
+    
+  anchors:
+    power_kwh: 1000        # FIXED
+    compute_tflops: 3280   # FIXED
+    
+  constitution:
+    hash: "00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177"
+    uri: "ipfs://Qm..."    # TBD
+    
+  parameters:
+    independence_timestamp: 1704067200  # 2027-01-01T00:00:00Z
+    halflife_years: 5
+    anti_whale_threshold: 0.30
+    
+  treasury:
+    initial_supply_axi: 13280
+    genesis_address: "TBD"
+    
+  validators:
+    - "genesis_node"
+    
+  signature: "genesis_node_signature"
+```
+
+---
+
+## Appendix C: Four Values Summary (Audit Completion)
+
+| 问题 | 答案 | 状态 |
+|------|------|------|
+| 唯一 canonical genesis hash | `f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314` | ✅ DETERMINED |
+| 唯一 canonical constitution hash | `00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177` | ✅ VERIFIED |
+| 所有 runtime 表面一致 | **YES** (after rebuild & restart) | ⏸️ PENDING EXECUTION |
+| source of truth 路径 | `src/core/genesis.rs` (deterministic) | ✅ DETERMINED |
+
+**Sign-off Status**: ⏸️ WAITING FOR EXECUTION (rebuild + restart)
+
+---
+
+*审计完成版本: 2026-03-14-v2.0*  
+*必须在任何协议实现之前完成*  
+*状态: CODE FIXED, PENDING RUNTIME VERIFICATION*

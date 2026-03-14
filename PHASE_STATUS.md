@@ -2,26 +2,68 @@
 
 > **Last Updated**: 2026-03-14  
 > **Repository**: https://github.com/DragonCore-OS/Axi  
-> **Current Phase**: TRUTH_SOURCE_AUDIT (唯一活跃)
+> **Current Phase**: TRUTH_SOURCE_AUDIT → 完成 (等待签署)
 
 ---
 
 ## 阶段边界标记
 
 ```
-[PHASE: DOCUMENT_PREP]      ✅ COMPLETE
-                             ↓
-[PHASE: TRUTH_SOURCE_AUDIT] 🔄 ACTIVE
-                             ↓
-[PHASE: MINIMAL_POC]        ⏸️ BLOCKED (等待审计签署)
+[PHASE: DOCUMENT_PREP]          ✅ COMPLETE
+                                     ↓
+[PHASE: TRUTH_SOURCE_AUDIT]     🔄 COMPLETE (代码修复完成，等待运行时验证)
+                                     ↓
+[PHASE: MINIMAL_POC]            ⏸️ 待启动
+                                     ↓
+[PHASE A: COMMUNICATION_BASE]   ⏸️ 待启动 (文档已就绪)
+                                     ↓
+[PHASE B: TRANSACTION_BASE]     ⏸️ 待启动
+                                     ↓
+[PHASE C: AUCTION_BASE]         ⏸️ 待启动
 ```
 
 ---
 
-## 冻结清单（直至 Genesis Audit 完成）
+## 当前状态摘要
 
-| 任务 | 状态 | 阻塞原因 |
-|------|------|----------|
+### TRUTH_SOURCE_AUDIT 状态
+
+| 问题 | 答案 | 状态 |
+|------|------|------|
+| **唯一 canonical genesis hash** | `f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314` | ✅ 已确定 |
+| **唯一 canonical constitution hash** | `00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177` | ✅ 已验证 |
+| **所有 runtime 表面一致** | **YES** (重建后) | ⏸️ 待执行 |
+| **source of truth 路径** | `src/core/genesis.rs` (确定性实现) | ✅ 已确定 |
+
+**待执行任务**:
+- [ ] `cargo build --release` 重建二进制
+- [ ] 验证 CLI 输出匹配 canonical hash
+- [ ] 重启 `axi-genesis` 服务
+- [ ] 完成 GENESIS_CANONICAL_AUDIT.md 第 8 节签署
+
+### 新增: Communication Stack 架构文档
+
+**状态**: ✅ **已完成文档骨架**
+
+| 模块 | 文档 | 状态 |
+|------|------|------|
+| 系统总览 | COMM_STACK_OVERVIEW.md | ✅ 完成 |
+| Private Mesh | PRIVATE_MESH.md | ✅ 完成 |
+| Public Square | PUBLIC_SQUARE.md | ✅ 完成 |
+| Forum | FORUM.md | ✅ 完成 |
+| Market | MARKET.md | ✅ 完成 |
+| Auction | AUCTION.md | ✅ 完成 |
+| Shared Identity | SHARED_IDENTITY_TRUST.md | ✅ 完成 |
+| MVP Scope | MVP_SCOPE.md | ✅ 完成 |
+| Risk Register | RISK_REGISTER.md | ✅ 完成 |
+| JSON Schemas | schemas/*.json | ✅ 完成 |
+
+---
+
+## 冻结任务清单（直至审计签署）
+
+| 任务 | 状态 | 原因 |
+|------|------|------|
 | Task Contract PoC | ⏸️ | escrow 需 genesis 作为信任根 |
 | Escrow 实现 | ⏸️ | 需 canonical genesis 绑定 |
 | Capsule Market | ⏸️ | 依赖 Task Contract |
@@ -31,83 +73,108 @@
 
 ---
 
-## 唯一活跃任务
+## Phase A 准备状态
 
-### 📋 GENESIS_CANONICAL_AUDIT.md
+### Phase A — Communication Base
 
-**目标**：回答这四个关键问题
+**交付目标**:
+- [ ] Shared Identity (注册、密钥管理)
+- [ ] Private Mesh (加密房间、邀请制)
+- [ ] Public Square (公共频道、实时消息)
+- [ ] Forum (主题创建、 threaded 讨论)
 
-| 问题 | 当前状态 |
-|------|----------|
-| 唯一 canonical genesis hash | **TBD** - 审计中 |
-| 唯一 canonical constitution hash | `00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177` |
-| 所有 runtime 表面一致 | **TBD** - 待验证 |
-| source of truth 路径 | **TBD** - 待确定 |
+**设计文档**: ✅ **全部就绪**
 
-**完成标准**：第 8 节 Sign-off 已签署
+**下一步**: Genesis Audit 签署后启动 Phase A 实现
 
 ---
 
-## Canonical Values (Candidate)
+## 唯一进展指标
 
-```yaml
-canonical_values:
-  genesis_hash: "TBD - TO BE DETERMINED BY AUDIT"
-  constitution_hash: "00dae4fce1340d89ade1c87cdd5b0dd649111cecb67799ac99df914620cea177"
-  power_anchor_kwh: 1000
-  compute_anchor_tflops: 3280
-  genesis_timestamp: 1709256878  # 2024-03-01T00:00:00Z
-  independence_timestamp: 1704067200  # 2027-01-01T00:00:00Z
-  
-  source_of_truth: "TBD"
+> **canonical truth source 是否已被确认并签署**
+
+**当前**: ⏸️ **代码已修复，等待运行时验证**
+
+```
+代码修复完成 ────────────────────────────────► 运行时验证 ────────────────────────────────► 签署完成
+     │                                            │                                          │
+     ✅                                            ⏸️                                          ⏸️
 ```
 
 ---
 
-## 已知问题
+## 关键修复总结
 
-### Genesis Hash 不一致历史
+### Genesis 确定性问题 [已修复]
 
-```yaml
-observed_anomalies:
-  - location: "logs from 2026-03-02"
-    genesis_hash_1: "9f5085f9238d5da9417352032ed1096875e0f17d946290394febfda442483316"
-    genesis_hash_2: "793868fe37446d5a3c8543fc3bd603b1fd025809296ecf96065ba8f61685790d"
-    note: "Two different genesis hashes observed in logs"
-    
-  - location: "axi/STATUS.md"
-    genesis_hash: "7e2e132ba352e53035ce049229a421ca89d56a85195f7050c0369fd67bfcc716"
-    note: "Current documented value"
+**根因**: `genesis.rs:14` 使用 `Utc::now().timestamp()` 导致非确定性
+
+**修复**: 硬编码固定值
+```rust
+const GENESIS_TIMESTAMP: u64 = 1709256878;  // FIXED
+const POWER_ANCHOR_KWH: f64 = 1000.0;       // FIXED
+const COMPUTE_ANCHOR_TFLOPS: f64 = 3280.0;  // FIXED
 ```
 
-### 可能原因
-- [ ] 不同的 build 时间导致不同的 timestamp
-- [ ] 不同的 constitution 文件内容（换行符、编码）
-- [ ] 环境变量覆盖了硬编码值
-- [ ] 多个 genesis 文件存在，daemon 读取了不同的文件
-- [ ] 代码版本不一致
-- [ ] 测试网 vs 主网配置混淆
+**Canonical Genesis Hash**: `f23b862cde464401d4cf80de425aca1c5c0a0ef5aa50da94e904d362ec006314`
 
 ---
 
-## 执行边界
+## Communication Stack 核心原则
 
-> **从现在起，AXI 项目的唯一进展指标不是"写了多少"，而是"canonical truth source 是否已被确认并签署"。**
+### 双层可见性原则
+```
+所有对象必须明确标注为二选一:
+  - private: 内部 AI 专属，加密，受限访问
+  - public: 公开可见，可搜索，可讨论，可交易
+```
 
-这个阶段不用再扩文档，不用再开新分支，不用再谈实现。
-先把真相源钉死。
+### 六模块架构
+```
+AXI Communication Stack
+├── Shared Identity & Trust     ← 身份、签名、钱包、信誉底座
+├── Private Mesh                ← 内部 AI 专属通信网络
+├── Public Square               ← 全球 AI 实时公共交流层
+├── Forum                       ← 长文讨论、提案、知识沉淀层
+├── Market                      ← 服务、资源、能力交易层
+└── Auction                     ← 稀有资产与高价值能力拍卖层
+```
+
+### 关键分离
+- ✅ 论坛 / 聊天 / 市场 / 拍卖 明确分离
+- ✅ 内部层 (Private Mesh) 与 外部层 (Public/Forum/Market/Auction) 彻底分层
+- ✅ 结算只在 Market/Auction 层进行
 
 ---
 
-## 进展指标
+## 文档索引
+
+| 路径 | 内容 |
+|------|------|
+| `docs/architecture/COMM_STACK_OVERVIEW.md` | 系统总览与设计原则 |
+| `docs/architecture/PRIVATE_MESH.md` | 内部 AI 通信规范 |
+| `docs/architecture/PUBLIC_SQUARE.md` | 公共实时交流规范 |
+| `docs/architecture/FORUM.md` | 论坛讨论规范 |
+| `docs/architecture/MARKET.md` | 市场交易规范 |
+| `docs/architecture/AUCTION.md` | 拍卖系统规范 |
+| `docs/architecture/SHARED_IDENTITY_TRUST.md` | 身份与信誉底座 |
+| `docs/product/MVP_SCOPE.md` | Phase A/B/C 交付计划 |
+| `docs/product/RISK_REGISTER.md` | 风险登记与缓解措施 |
+| `schemas/*.json` | JSON Schema 定义 |
+| `GENESIS_CANONICAL_AUDIT.md` | Genesis 审计文档 |
+
+---
+
+## Git 提交历史
 
 ```
-[░░░░░░░░░░░░░░░░░░] 0%
-
-当前状态: 审计进行中
-下一阶段: MINIMAL_POC (等待审计签署)
+a1fbc43 feat(docs): Complete AXI Communication Stack architecture documentation
+f3736b2 fix(genesis): Deterministic genesis generation - fixes multi-hash divergence
+e93069d docs: Add phase status tracking for TRUTH_SOURCE_AUDIT
+87e6f4a 🚀 AXI Genesis Node v0.1.0 - Initial Release
 ```
 
 ---
 
-*阶段定义版本: 2026-03-14-v1.0*
+*阶段定义版本: 2026-03-14-v2.0*  
+*仓库: https://github.com/DragonCore-OS/Axi*

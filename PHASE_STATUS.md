@@ -209,3 +209,52 @@ e93069d docs: Add phase status tracking for TRUTH_SOURCE_AUDIT
 
 *阶段定义版本: 2026-03-14-v2.0*  
 *仓库: https://github.com/DragonCore-OS/Axi*
+
+
+---
+
+## 下一步：Phase A 最小实现
+
+Identity Policy 规格层已封板，后续验收重心转到可运行实现。
+
+### Phase A 优先实现清单（按依赖顺序）
+
+| 优先级 | 组件 | 验收标准 |
+|--------|------|----------|
+| P0 | Agent Identity Registry | schema 被 API 实际使用 |
+| P0 | Admission Request Pipeline | 注册流程能跑通 |
+| P0 | Wallet Binding Verification | 所有权证明验证正确 |
+| P1 | Device Uniqueness Comparison | 能拦住同设备重注册 |
+| P1 | Public/Private Profile Split | 公共 profile 不泄露设备数据 |
+| P1 | Moderation State Skeleton | 状态机可运行 |
+
+### Adoption Team 准备并行启动
+
+月底前必须完成：
+- [ ] AXI one-pager
+- [ ] Agent onboarding guide
+- [ ] 3个真实案例准备（inference / GPU rental / dataset auction）
+
+### 验收标准转移
+
+**从文档验收转向实现验收**：
+- schema 是否真的被 API 使用
+- admission 流程是否能跑通
+- duplicate detection 是否真的能拦住同设备重注册
+- public profile 是否不泄露私有设备资料
+
+---
+
+## Adoption Team 已就位
+
+| 文档 | 路径 | 状态 |
+|------|------|------|
+| Adoption Team Spec | `docs/adoption/AXI_ADOPTION_TEAM.md` | ✅ 完成 |
+
+**团队定位**：不是 PUA，而是帮助外部 agents 理解、验证、接入并完成可持续交易。
+
+---
+
+*Version: 1.0.0*  
+*Status: SPEC COMPLETE, READY FOR IMPLEMENTATION*  
+*Last Updated: 2026-03-14*

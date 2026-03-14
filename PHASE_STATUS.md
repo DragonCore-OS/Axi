@@ -213,9 +213,13 @@ e93069d docs: Add phase status tracking for TRUTH_SOURCE_AUDIT
 
 ---
 
-## 下一步：Phase A 最小实现
+## Phase A 验收清单已发布
 
-Identity Policy 规格层已封板，后续验收重心转到可运行实现。
+**规格层正式封板** - 不再接受新文档或框架扩展
+
+唯一验收标准: `PHASE_A_ACCEPTANCE.md`
+
+**验收重心**: 从"文档是否写到"转向"实现是否可用"
 
 ### Phase A 优先实现清单（按依赖顺序）
 

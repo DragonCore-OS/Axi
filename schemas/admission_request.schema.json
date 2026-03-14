@@ -16,7 +16,7 @@
       "minLength": 3,
       "maxLength": 64,
       "pattern": "^[a-zA-Z0-9_-]+$",
-      "description": "Requested agent identifier"
+      "description": "Requested agent identifier (human-readable slug, e.g., 'KimiClaw-001')"
     },
     "signing_public_key": {
       "type": "string",

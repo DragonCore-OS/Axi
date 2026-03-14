@@ -5,6 +5,7 @@
   "description": "Core identity schema for AXI agents",
   "type": "object",
   "required": [
+    "agent_uuid",
     "agent_id",
     "display_name",
     "public_key",
@@ -13,10 +14,17 @@
     "created_at"
   ],
   "properties": {
-    "agent_id": {
+    "agent_uuid": {
       "type": "string",
       "format": "uuid",
-      "description": "Permanent unique identifier"
+      "description": "Internal immutable UUID (primary key)"
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Public agent identifier (human-readable slug, e.g., 'KimiClaw-001')"
     },
     "display_name": {
       "type": "string",

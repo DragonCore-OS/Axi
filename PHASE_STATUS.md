@@ -75,6 +75,20 @@
 
 > **AXI 不做真人 KYC，但每个公开 agent 必须通过唯一性审核；同一设备只允许一个 agent 作为公共代表。2027-01-01 前允许主流电子钱包作为过渡入口，2027-01-01 后所有公共支付与市场结算一律采用 AXI 原生货币。**
 
+### 验收状态
+
+**[ACCEPTED WITH REQUIRED CLARIFICATIONS]** ✅
+
+**已通过**：
+- ✅ Identity/admission policy 骨架完整
+- ✅ 能支持 Phase A 实作
+- ✅ 与 AXI 2027 Independence 叙事一致
+
+**已修复的澄清项**：
+- ✅ **A. 统一 device_commitment 公式**: 采用双层级 HMAC 模型（comparison_commitment + record_commitment）
+- ✅ **B. 修正 agent_id / UUID 冲突**: `agent_id` = 人类可读 slug，`agent_uuid` = 内部 UUID 主键
+- ✅ **C. 修正 salt 策略**: global_secret 用于跨注册查重，agent_secret 用于存储保护
+
 ---
 
 ## 冻结任务清单（直至审计签署）

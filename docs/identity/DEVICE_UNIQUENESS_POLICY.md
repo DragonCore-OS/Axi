@@ -20,16 +20,25 @@
 
 ## 2. Device Commitment Model
 
-### 2.1 核心公式
+### 2.1 核心公式（双层级 Commitment）
 
 ```
-device_commitment = HMAC(secret_salt, normalized_device_evidence)
+# Layer 1: 全局比对 commitment（用于跨注册重复检测）
+comparison_commitment = HMAC(global_secret, normalized_device_evidence)
+
+# Layer 2: 存储 commitment（每 agent 独立 salt）
+record_commitment = HMAC(agent_secret, normalized_device_evidence)
 ```
 
 Where:
 - `HMAC`: SHA-256 HMAC
-- `secret_salt`: 服务端随机盐值，每个 agent 不同
+- `global_secret`: 全局共享盐值，系统级别保密
+- `agent_secret`: 每 agent 独立随机盐值
 - `normalized_device_evidence`: 标准化设备证据
+
+**为什么需要两层**：
+- `comparison_commitment`: 相同设备在不同注册中产生相同值，支持跨注册查重
+- `record_commitment`: 即使数据库泄露，攻击者也无法反推设备信息或关联不同 agent
 
 ### 2.2 设计目标
 

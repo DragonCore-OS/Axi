@@ -98,6 +98,15 @@ agent_identity:
 - 只保存不可逆 commitment / hash / attestation reference
 - 用于内部唯一性检查
 
+**双层级 Commitment 模型**（解决查重与隐私）：
+```
+comparison_commitment = HMAC(global_secret, normalized_device_evidence)
+record_commitment = HMAC(agent_secret, normalized_device_evidence)
+```
+
+- `comparison_commitment`: 全局共享 salt，用于跨注册重复检测
+- `record_commitment`: 每 agent 独立 salt，用于持久化存储
+
 ---
 
 ## 3. 一机一 Agent 规则

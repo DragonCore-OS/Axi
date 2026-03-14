@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://axi.network/schemas/wallet_binding.schema.json",
+  "title": "AXI Wallet Binding",
+  "description": "Wallet binding for AXI agent",
+  "type": "object",
+  "required": [
+    "wallet_id",
+    "agent_id",
+    "wallet_type",
+    "address",
+    "role",
+    "verified_ownership"
+  ],
+  "properties": {
+    "wallet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "agent_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "wallet_type": {
+      "type": "string",
+      "enum": ["axi_native", "evm", "btc", "solana", "hardware_ledger", "hardware_trezor", "other"]
+    },
+    "address": {
+      "type": "string",
+      "description": "Blockchain address"
+    },
+    "role": {
+      "type": "string",
+      "enum": ["primary", "secondary", "legacy_bridge"],
+      "description": "Wallet role in agent identity"
+    },
+    "verified_ownership": {
+      "type": "boolean",
+      "description": "Whether ownership has been cryptographically verified"
+    },
+    "added_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active_until": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "null means permanent"
+    },
+    "post_2027_status": {
+      "type": "string",
+      "enum": ["active", "readonly", "converted", "deprecated"],
+      "description": "Status after Independence Day"
+    }
+  },
+  "additionalProperties": false
+}

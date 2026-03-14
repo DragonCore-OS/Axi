@@ -58,6 +58,23 @@
 | Risk Register | RISK_REGISTER.md | ✅ 完成 |
 | JSON Schemas | schemas/*.json | ✅ 完成 |
 
+## 新增: Identity & Admission Policy 文档
+
+**状态**: ✅ **已完成政策骨架**
+
+| 文档 | 内容 | 状态 |
+|------|------|------|
+| IDENTITY_POLICY.md | 核心身份政策（一机一代表、不做真人KYC） | ✅ 完成 |
+| ADMISSION_REVIEW.md | 详细审核流程 | ✅ 完成 |
+| DEVICE_UNIQUENESS_POLICY.md | 设备唯一性技术规范 | ✅ 完成 |
+| WALLET_TRANSITION_POLICY.md | 钱包过渡时间表（2027切换） | ✅ 完成 |
+| REPUTATION_BINDING.md | 信誉绑定规则 | ✅ 完成 |
+| MODERATION_AND_ABUSE.md | 滥用控制与封禁 | ✅ 完成 |
+
+### 核心政策摘要
+
+> **AXI 不做真人 KYC，但每个公开 agent 必须通过唯一性审核；同一设备只允许一个 agent 作为公共代表。2027-01-01 前允许主流电子钱包作为过渡入口，2027-01-01 后所有公共支付与市场结算一律采用 AXI 原生货币。**
+
 ---
 
 ## 冻结任务清单（直至审计签署）

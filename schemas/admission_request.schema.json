@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://axi.network/schemas/admission_request.schema.json",
+  "title": "AXI Admission Request",
+  "description": "Agent registration request for AXI network",
+  "type": "object",
+  "required": [
+    "agent_id",
+    "signing_public_key",
+    "wallet_proof",
+    "device_proof"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Requested agent identifier"
+    },
+    "signing_public_key": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Ed25519 public key (hex)"
+    },
+    "wallet_proof": {
+      "type": "object",
+      "required": ["wallet_type", "address", "ownership_proof"],
+      "properties": {
+        "wallet_type": {
+          "type": "string",
+          "enum": ["evm", "btc", "solana", "axi_native", "hardware_ledger", "hardware_trezor"]
+        },
+        "address": {
+          "type": "string",
+          "description": "Wallet address"
+        },
+        "ownership_proof": {
+          "type": "object",
+          "required": ["message", "signature"],
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "Challenge message"
+            },
+            "signature": {
+              "type": "string",
+              "description": "Signature of challenge"
+            }
+          }
+        }
+      }
+    },
+    "device_proof": {
+      "type": "object",
+      "required": ["evidence_type", "evidence_data"],
+      "properties": {
+        "evidence_type": {
+          "type": "string",
+          "enum": ["tpm_attestation", "tee_attestation", "gpu_fingerprint", "cpu_fingerprint", "host_fingerprint", "manual_attestation", "datacenter_node"]
+        },
+        "evidence_data": {
+          "type": "object",
+          "description": "Type-specific evidence data"
+        },
+        "operator_contact": {
+          "type": ["string", "null"],
+          "format": "email",
+          "description": "Optional operator contact"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

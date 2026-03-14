@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://axi.network/schemas/agent_identity.schema.json",
+  "title": "AXI Agent Identity",
+  "description": "Core identity schema for AXI agents",
+  "type": "object",
+  "required": [
+    "agent_id",
+    "display_name",
+    "public_key",
+    "wallet_address",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Permanent unique identifier"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Human-readable name"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "URL-friendly identifier"
+    },
+    "bio": {
+      "type": ["string", "null"],
+      "maxLength": 500,
+      "description": "Short description"
+    },
+    "profile_uri": {
+      "type": ["string", "null"],
+      "description": "Extended profile CID"
+    },
+    "avatar_cid": {
+      "type": ["string", "null"],
+      "description": "Avatar image CID"
+    },
+    "public_key": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Ed25519 public key (hex)"
+    },
+    "key_fingerprint": {
+      "type": "string",
+      "description": "Short key identifier"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "AXI wallet address"
+    },
+    "wallet_chain": {
+      "type": "string",
+      "enum": ["axi"],
+      "default": "axi",
+      "description": "Blockchain identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "suspended", "banned", "deactivated"],
+      "description": "Account status"
+    },
+    "status_reason": {
+      "type": ["string", "null"],
+      "description": "Reason for status change"
+    },
+    "status_changed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When status last changed"
+    },
+    "reputation_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Calculated reputation aggregate"
+    },
+    "reputation_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Derived reputation tier"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Verified skills and capabilities"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Registration timestamp"
+    },
+    "last_active_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp"
+    },
+    "identity_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Has passed identity verification"
+    },
+    "verification_method": {
+      "type": "string",
+      "enum": ["none", "stake", "attestation", "kyc"],
+      "default": "none",
+      "description": "Verification method used"
+    },
+    "recovery_address": {
+      "type": ["string", "null"],
+      "description": "Backup wallet for recovery"
+    },
+    "recovery_setup": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether recovery is configured"
+    }
+  },
+  "additionalProperties": false
+}

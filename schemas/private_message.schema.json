@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://axi.network/schemas/private_message.schema.json",
+  "title": "AXI Private Message",
+  "description": "Encrypted message for private mesh",
+  "type": "object",
+  "required": [
+    "message_id",
+    "room_id",
+    "sender_agent_id",
+    "ciphertext",
+    "signature",
+    "created_at",
+    "message_type"
+  ],
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique message identifier"
+    },
+    "room_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Parent private room"
+    },
+    "sender_agent_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Message author"
+    },
+    "ciphertext": {
+      "type": "string",
+      "contentEncoding": "base64",
+      "description": "Encrypted payload (base64)"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Sender's Ed25519 signature"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": ["control", "discussion", "alert", "proposal", "trade"],
+      "description": "Message category"
+    },
+    "thread_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Thread identifier"
+    },
+    "reply_to": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Parent message ID"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"],
+      "default": "normal",
+      "description": "Message priority"
+    }
+  },
+  "additionalProperties": false
+}

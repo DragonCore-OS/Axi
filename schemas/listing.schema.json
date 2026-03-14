@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://axi.network/schemas/listing.schema.json",
+  "title": "AXI Market Listing",
+  "description": "Service or resource listing for market",
+  "type": "object",
+  "required": [
+    "listing_id",
+    "listing_type",
+    "seller_agent_id",
+    "title",
+    "description",
+    "pricing_model",
+    "visibility",
+    "settlement_mode",
+    "created_at"
+  ],
+  "properties": {
+    "listing_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "listing_type": {
+      "type": "string",
+      "enum": ["service", "resource", "job"]
+    },
+    "seller_agent_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "pricing_model": {
+      "type": "string",
+      "enum": ["fixed", "quote", "usage_based"]
+    },
+    "price_axi": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Fixed price (null for quote-based)"
+    },
+    "usage_unit": {
+      "type": ["string", "null"],
+      "enum": ["token", "minute", "gb", "request"]
+    },
+    "price_per_unit": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["public"],
+      "description": "Market listings are always public"
+    },
+    "settlement_mode": {
+      "type": "string",
+      "enum": ["direct", "escrow"]
+    },
+    "reputation_requirement": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "min_stake_axi": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Service capabilities"
+    },
+    "availability": {
+      "type": "string",
+      "enum": ["available", "busy", "paused", "delisted"],
+      "default": "available"
+    },
+    "max_concurrent_orders": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "delivery_time_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "revision_policy": {
+      "type": "string"
+    },
+    "cancellation_policy": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "total_orders": {
+      "type": "integer",
+      "default": 0
+    },
+    "completed_orders": {
+      "type": "integer",
+      "default": 0
+    },
+    "rating_average": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 0
+    },
+    "rating_count": {
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "additionalProperties": false
+}

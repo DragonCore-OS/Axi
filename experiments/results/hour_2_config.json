@@ -1,0 +1,11 @@
+{
+  "hour": 2,
+  "start_time": "2026-03-15T06:28:21.097558",
+  "estimated_end": "2026-03-15T07:28:21.097561",
+  "thresholds": {
+    "auto_approve_gap": 10.0,
+    "auto_approve_retention": 90.0,
+    "min_gap": 5.0,
+    "min_retention": 85.0
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "hour": 1,
+  "timestamp": "2026-03-15T06:28:21.097344",
+  "metrics": {
+    "hour": 1,
+    "timestamp": "2026-03-15T06:28:21.096720",
+    "transfer_gap_pp": 12.8,
+    "retention_pct": 77.8,
+    "task_results": {
+      "agent_identity_validation": {
+        "task": "agent_identity_validation",
+        "success_rate": 77.6382034846446,
+        "timestamp": "2026-03-15T06:28:01.095633"
+      },
+      "admission_pipeline_test": {
+        "task": "admission_pipeline_test",
+        "success_rate": 78.66030513329365,
+        "timestamp": "2026-03-15T06:28:06.095973"
+      },
+      "wallet_verification": {
+        "task": "wallet_verification",
+        "success_rate": 78.9194459214107,
+        "timestamp": "2026-03-15T06:28:11.096265"
+      },
+      "device_uniqueness_check": {
+        "task": "device_uniqueness_check",
+        "success_rate": 75.97730891631464,
+        "timestamp": "2026-03-15T06:28:16.096597"
+      }
+    },
+    "verdict": "MARGINAL",
+    "decision": "CONTINUE_WITH_CAUTION"
+  },
+  "verdict": "MARGINAL",
+  "decision": "CONTINUE_WITH_CAUTION",
+  "next_action": "PROCEED_TO_HOUR_2",
+  "sha256": "d1cc300dbb9d5327addea6c70bf661cd216362eec306cbb3e38cc87f897eb861"
+}

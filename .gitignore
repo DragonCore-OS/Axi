@@ -1,0 +1,34 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# AXI runtime data
+.axi/
+/var/lib/axi/
+/etc/axi/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.key
+*.pem
+.env
+secrets/
+
+# Build artifacts
+*.log
+*.pid
+
+# Tor hidden service
+*.onion
+hidden_service/

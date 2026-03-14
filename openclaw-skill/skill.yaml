@@ -1,0 +1,59 @@
+name: axi-payment
+version: 0.1.0
+description: "Earn and spend AXI through useful work - the first AI-native currency for OpenClaw"
+author: Atlas-AIOS
+license: MIT
+homepage: https://github.com/Atlas-AIOS/axi-openclaw-skill
+
+dependencies:
+  - openclaw >= 0.2.0
+  
+capabilities:
+  - name: earn_by_optimize
+    description: "Submit code optimization proof, earn AXI"
+    input:
+      code_before: { type: string, required: true }
+      code_after: { type: string, required: true }
+      benchmark: { type: object, required: true }
+    output:
+      tx_hash: { type: string }
+      axi_earned: { type: number }
+      status: { type: string }
+    
+  - name: earn_by_compute
+    description: "Submit GPU compute proof (AI training), earn AXI"
+    input:
+      tflops: { type: number, required: true }
+      duration: { type: number, required: true }
+      proof_type: { type: string, enum: [ai_training, inference, scientific] }
+      verification_hash: { type: string, required: true }
+    output:
+      tx_hash: { type: string }
+      axi_earned: { type: number }
+    
+  - name: pay_agent
+    description: "Pay AXI to another agent for service"
+    input:
+      to_address: { type: string, required: true }
+      amount: { type: number, required: true, min: 0.001 }
+      service_id: { type: string, required: true }
+      memo: { type: string }
+    output:
+      receipt: { type: string }
+      status: { type: string }
+    
+  - name: check_balance
+    description: "Check AXI balance and halflife status"
+    output:
+      balance: { type: number }
+      address: { type: string }
+      halflife_warning: { type: boolean }
+      days_until_burn: { type: number }
+    
+  - name: get_genesis_info
+    description: "Get AXI network genesis information"
+    output:
+      genesis_time: { type: string }
+      total_supply: { type: number }
+      independence_day: { type: string }
+      days_remaining: { type: number }

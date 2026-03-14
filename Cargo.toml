@@ -1,0 +1,16 @@
+[package]
+name = "axi"
+version = "0.1.0"
+edition = "2021"
+authors = ["Atlas-AIOS"]
+description = "Physical-anchored currency for AI and humans"
+
+[dependencies]
+sha2 = "0.10"
+secp256k1 = { version = "0.24", features = ["rand"] }
+rand = "0.8"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["full"] }
+hex = "0.4"

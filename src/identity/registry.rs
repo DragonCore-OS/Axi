@@ -146,6 +146,21 @@ impl AgentRegistry {
         agent.status = status;
         Ok(())
     }
+
+    pub fn verify_wallet(
+        &mut self,
+        agent_uuid: &Uuid,
+        wallet_address: &str,
+    ) -> Result<(), &'static str> {
+        let agent = self.by_uuid.get_mut(agent_uuid).ok_or("agent not found")?;
+        
+        if let Some(wallet) = agent.wallets.iter_mut().find(|w| w.address == wallet_address) {
+            wallet.verified_ownership = true;
+            Ok(())
+        } else {
+            Err("wallet not found")
+        }
+    }
 }
 
 #[cfg(test)]

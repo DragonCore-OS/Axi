@@ -1,4 +1,5 @@
 pub mod identity;
+pub mod market;
 
 pub mod anchor;
 pub mod bridge;

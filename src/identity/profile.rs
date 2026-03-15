@@ -66,6 +66,7 @@ mod tests {
             public_key: "pk".into(),
             representative_record_commitment: "record-secret".into(),
             comparison_commitment: "comparison-secret".into(),
+            reputation_score: 0,
             status: AgentStatus::Pending,
             wallets: vec![WalletRef {
                 wallet_id: Uuid::new_v4(),

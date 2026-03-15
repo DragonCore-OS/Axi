@@ -49,6 +49,7 @@ pub struct AgentIdentity {
     pub public_key: String,
     pub representative_record_commitment: String,
     pub comparison_commitment: String,
+    pub reputation_score: i64,
     pub status: AgentStatus,
     pub wallets: Vec<WalletRef>,
     pub created_at: i64,
@@ -98,6 +99,7 @@ impl AgentRegistry {
             public_key,
             representative_record_commitment,
             comparison_commitment,
+            reputation_score: 0,
             status: AgentStatus::Pending,
             wallets: vec![],
             created_at: Utc::now().timestamp(),
@@ -147,19 +149,14 @@ impl AgentRegistry {
         Ok(())
     }
 
-    pub fn verify_wallet(
+    pub fn apply_reputation_delta(
         &mut self,
         agent_uuid: &Uuid,
-        wallet_address: &str,
-    ) -> Result<(), &'static str> {
+        delta: i64,
+    ) -> Result<i64, &'static str> {
         let agent = self.by_uuid.get_mut(agent_uuid).ok_or("agent not found")?;
-        
-        if let Some(wallet) = agent.wallets.iter_mut().find(|w| w.address == wallet_address) {
-            wallet.verified_ownership = true;
-            Ok(())
-        } else {
-            Err("wallet not found")
-        }
+        agent.reputation_score += delta;
+        Ok(agent.reputation_score)
     }
 }
 
@@ -185,5 +182,22 @@ mod tests {
             registry.get_by_agent_id("KimiClaw-001").unwrap().agent_uuid,
             agent.agent_uuid
         );
+    }
+
+    #[test]
+    fn reputation_delta_updates_agent_score() {
+        let mut registry = AgentRegistry::new();
+        let agent = registry
+            .create_agent(
+                "rep-agent".into(),
+                "Rep Agent".into(),
+                "pk".into(),
+                "cmp".into(),
+                "rec".into(),
+            )
+            .unwrap();
+
+        let score = registry.apply_reputation_delta(&agent.agent_uuid, 5).unwrap();
+        assert_eq!(score, 5);
     }
 }

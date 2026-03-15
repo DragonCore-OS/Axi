@@ -2,15 +2,14 @@ use axi::core::{genesis::GenesisBlock, burn::Burn};
 use axi::bridge::timelock::TimeLock;
 use chrono::Utc;
 
-#[tokio::main]
-async fn main() {
-    println!("⚡ AXI Node v{}", axi::VERSION);
+fn main() {
+    println!("⚡ AXI Node v0.1.0");
     
     let args: Vec<String> = std::env::args().collect();
     
     match args.get(1).map(|s| s.as_str()) {
         Some("genesis") => {
-            let block = GenesisBlock::new(1000.0, 3280.0);
+            let block = GenesisBlock::new();
             println!("Genesis Block:");
             println!("  Hash: {}", block.hash);
             println!("  Constitution: {}", block.constitution_hash);

@@ -10,7 +10,11 @@ use serde::{Deserialize, Serialize};
 pub use serde;
 
 pub mod gates;
+pub mod features;
+pub mod features_tests;
+
 pub use gates::{ReleaseGates, SystemMetrics, GateResult, GateBlocker, RolloutState};
+pub use features::{FeatureState, FeatureFlags, FeatureFlagStore};
 
 /// Governance configuration for mainnet readiness
 #[derive(Debug, Clone)]

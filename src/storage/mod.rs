@@ -11,7 +11,7 @@ pub mod journal;
 pub use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
 pub use journal::{TransactionJournal, JournalEntry, JournalEntryBuilder, TxType, EntityType, Transaction};
 
-const CURRENT_SCHEMA_VERSION: i64 = 3;
+const CURRENT_SCHEMA_VERSION: i64 = 4;
 
 #[derive(Debug, Clone)]
 pub struct PersistentStore {
@@ -196,6 +196,17 @@ impl PersistentStore {
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
                 params![3, Utc::now().to_rfc3339()],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Migration v4: Feature flags
+        if current_version < 4 {
+            conn.execute_batch(include_str!("schema_v4.sql"))
+                .map_err(|e| e.to_string())?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+                params![4, Utc::now().to_rfc3339()],
             )
             .map_err(|e| e.to_string())?;
         }

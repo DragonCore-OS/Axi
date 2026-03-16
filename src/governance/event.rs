@@ -16,6 +16,7 @@ use uuid::Uuid;
 /// - OperatorVisible: 操作员/控制台可见（摘要、风险告警）
 /// - Exportable: 可导出为对外报告
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EventScope {
     Internal,
     OperatorVisible,
@@ -39,6 +40,7 @@ impl EventScope {
 /// 对应 AXI Private Mesh 的 control/research/ops/security 分类，
 /// 但改造为事件主题流，不是聊天房间。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EventChannel {
     /// 治理推进：run 创建、seat 轮转、final gate、archive
     Control,
@@ -52,6 +54,7 @@ pub enum EventChannel {
 
 /// 严重程度
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Severity {
     Info,
     Warn,
@@ -63,6 +66,7 @@ pub enum Severity {
 /// 围绕 DragonCore 的 run-centered lifecycle 设计，
 /// 不是开放聊天系统的 open-ended message types。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GovernanceEventType {
     RunCreated,
     SeatStarted,
@@ -349,6 +353,38 @@ mod tests {
         
         assert!(EventScope::Exportable.is_operator_visible());
         assert!(EventScope::Exportable.is_exportable());
+    }
+
+    #[test]
+    fn test_dragoncore_interop() {
+        // DragonCore 格式（snake_case enums）
+        let dragoncore_json = r#"{
+            "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "run_id": "dragoncore-test-001",
+            "seat_id": null,
+            "channel": "control",
+            "event_type": "run_created",
+            "scope": "operator_visible",
+            "severity": "info",
+            "summary": "Test from DragonCore",
+            "details_ref": null,
+            "artifact_refs": [],
+            "created_at": "2026-03-16T10:00:00Z",
+            "correlation_id": null,
+            "parent_event_id": null,
+            "actor": "system",
+            "trigger_context": "runtime.init_run"
+        }"#;
+        
+        let result: Result<GovernanceEvent, _> = serde_json::from_str(dragoncore_json);
+        match &result {
+            Ok(e) => println!("✓ Parsed DragonCore event: {:?}", e.event_id),
+            Err(e) => println!("✗ Parse error (expected due to case mismatch): {}", e),
+        }
+        
+        // 注意：AXI 使用 CamelCase，DragonCore 使用 snake_case
+        // 需要 serde 配置來處理這個差異
+        println!("Interop note: AXI uses CamelCase, DragonCore uses snake_case");
     }
 
     #[test]

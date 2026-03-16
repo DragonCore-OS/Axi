@@ -6,9 +6,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub mod repos;
-pub use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
+pub mod journal;
 
-const CURRENT_SCHEMA_VERSION: i64 = 2;
+pub use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
+pub use journal::{TransactionJournal, JournalEntry, JournalEntryBuilder, TxType, EntityType, Transaction};
+
+const CURRENT_SCHEMA_VERSION: i64 = 3;
 
 #[derive(Debug, Clone)]
 pub struct PersistentStore {
@@ -182,6 +185,17 @@ impl PersistentStore {
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
                 params![2, Utc::now().to_rfc3339()],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Migration v3: Transaction journal
+        if current_version < 3 {
+            conn.execute_batch(include_str!("schema_v3.sql"))
+                .map_err(|e| e.to_string())?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+                params![3, Utc::now().to_rfc3339()],
             )
             .map_err(|e| e.to_string())?;
         }
@@ -360,12 +374,12 @@ mod tests {
     }
 
     #[test]
-    fn v2_schema_migrates_to_version_2() {
-        let path = temp_db_path("v2_migration");
+    fn v2_schema_relational_tables_exist() {
+        let path = temp_db_path("v2_tables");
         let store = PersistentStore::open(&path).unwrap();
+        // Schema version is now 3, but v2 tables should still exist
         let version = store.schema_version().unwrap();
-
-        assert_eq!(version, 2);
+        assert!(version >= 2);
 
         // Verify tables exist
         let conn = store.connect().unwrap();
@@ -589,6 +603,169 @@ mod tests {
         // List events
         let events = rep_repo.list_by_agent(&agent.agent_uuid).unwrap();
         assert_eq!(events.len(), 2);
+
+        let _ = fs::remove_file(path);
+    }
+
+    // =====================================================
+    // M2-3: Transaction Journal Tests
+    // =====================================================
+
+    #[test]
+    fn v3_schema_migrates_to_version_3() {
+        let path = temp_db_path("v3_migration");
+        let store = PersistentStore::open(&path).unwrap();
+        let version = store.schema_version().unwrap();
+
+        assert_eq!(version, 3);
+
+        // Verify journal table exists
+        let conn = store.connect().unwrap();
+        let tables: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+
+        assert!(tables.contains(&"transaction_journal".to_string()));
+        assert!(tables.contains(&"journal_watermarks".to_string()));
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn journal_appends_and_chains_transactions() {
+        let path = temp_db_path("journal_chain");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+        let journal = TransactionJournal::new(&conn);
+
+        // Append first transaction
+        let entry1 = JournalEntryBuilder::new(
+            TxType::CreateAgent,
+            EntityType::Agent,
+            &Uuid::new_v4().to_string()
+        )
+        .payload(serde_json::json!({"name": "Agent 1"}))
+        .build();
+        
+        let tx1 = journal.append(entry1).unwrap();
+        assert_eq!(tx1.tx_id, 1);
+        assert!(tx1.prev_tx_id.is_none());
+        assert!(!tx1.tx_hash.is_empty());
+
+        // Append second transaction
+        let entry2 = JournalEntryBuilder::new(
+            TxType::CreateOrder,
+            EntityType::Order,
+            &Uuid::new_v4().to_string()
+        )
+        .payload(serde_json::json!({"amount": 100}))
+        .build();
+        
+        let tx2 = journal.append(entry2).unwrap();
+        assert_eq!(tx2.tx_id, 2);
+        assert_eq!(tx2.prev_tx_id, Some(1));
+        assert!(!tx2.tx_hash.is_empty());
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn journal_queries_by_entity() {
+        let path = temp_db_path("journal_entity");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+        let journal = TransactionJournal::new(&conn);
+
+        let agent_id = Uuid::new_v4().to_string();
+
+        // Create multiple transactions for same entity
+        for i in 0..3 {
+            let entry = JournalEntryBuilder::new(
+                if i == 0 { TxType::CreateAgent } else { TxType::UpdateAgentStatus },
+                EntityType::Agent,
+                &agent_id
+            )
+            .payload(serde_json::json!({"seq": i}))
+            .build();
+            journal.append(entry).unwrap();
+        }
+
+        // Create transaction for different entity
+        let other_entry = JournalEntryBuilder::new(
+            TxType::CreateAgent,
+            EntityType::Agent,
+            &Uuid::new_v4().to_string()
+        )
+        .build();
+        journal.append(other_entry).unwrap();
+
+        // Query by entity
+        let txs = journal.list_by_entity("Agent", &agent_id).unwrap();
+        assert_eq!(txs.len(), 3);
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn journal_watermark_checkpoint() {
+        let path = temp_db_path("journal_watermark");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+        let journal = TransactionJournal::new(&conn);
+
+        // Create some transactions
+        for _ in 0..5 {
+            let entry = JournalEntryBuilder::new(
+                TxType::CreateOrder,
+                EntityType::Order,
+                &Uuid::new_v4().to_string()
+            )
+            .build();
+            journal.append(entry).unwrap();
+        }
+
+        // Set watermark
+        journal.set_watermark("last_snapshot", 3, &Uuid::new_v4()).unwrap();
+
+        // Get watermark
+        let watermark = journal.get_watermark("last_snapshot").unwrap();
+        assert!(watermark.is_some());
+        let (tx_id, _) = watermark.unwrap();
+        assert_eq!(tx_id, 3);
+
+        // Replay since watermark
+        let txs = journal.since(tx_id).unwrap();
+        assert_eq!(txs.len(), 2); // tx 4 and 5
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn journal_chain_integrity_verification() {
+        let path = temp_db_path("journal_integrity");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+        let journal = TransactionJournal::new(&conn);
+
+        // Create chain of transactions
+        for i in 0..5 {
+            let entry = JournalEntryBuilder::new(
+                TxType::CreateOrder,
+                EntityType::Order,
+                &Uuid::new_v4().to_string()
+            )
+            .payload(serde_json::json!({"seq": i}))
+            .build();
+            journal.append(entry).unwrap();
+        }
+
+        // Verify chain
+        let valid = journal.verify_chain(1).unwrap();
+        assert!(valid);
 
         let _ = fs::remove_file(path);
     }

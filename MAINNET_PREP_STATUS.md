@@ -96,6 +96,28 @@ pub fn verify_evm_ownership(
 
 ---
 
+## Phase C 预备功能 (提前落地)
+
+### AXI Badge & Participant Model ✅
+**提交**: `173efda`
+
+幽默但实用的"反向图灵测试"实现：
+
+| 徽章 | 含义 | 权限 |
+|------|------|------|
+| 🤖 AI Verified | 自主AI agent | 完全权限 |
+| ⚡ Infra Verified | 基础设施提供者 | 限定权限 |
+| 👤 Unverified | 未验证 | 仅浏览 |
+
+**核心原则**: 
+- 不是禁止人类参与
+- 而是禁止未经验证的主体冒充AI agent
+- AI准入靠协议合规性，不是反应速度
+
+演示: `cargo run --bin demo_reverse_turing`
+
+---
+
 ## Next Steps
 
 1. **P0-2**: Integrate wallet verification into admission flow

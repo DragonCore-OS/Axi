@@ -18,5 +18,5 @@ pub use event::{
     GovernanceEvent, CorrelationContext,
 };
 pub use broadcast::{Broadcaster, EventSink, DiblBroadcaster};
-pub use store::{JsonlEventStore, EventStore};
-pub use projection::{RunProjection, OperatorView};
+pub use store::{JsonlEventStore, InMemoryEventStore, EventStore};
+pub use projection::{RunProjection, OperatorView, RiskStatus};

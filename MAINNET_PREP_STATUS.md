@@ -4,81 +4,103 @@
 
 | Phase | Module | Status | Tests | Commit |
 |-------|--------|--------|-------|--------|
-| **M1** | Security Audit + Fixes | 🚨 **FINDINGS** | - | [`da3e3e3`](https://github.com/DragonCore-OS/Axi/commit/da3e3e3) |
+| **M1** | Security Audit + Fixes | 🔄 **IN PROGRESS** | 64/64 | [`95ebbde`](https://github.com/DragonCore-OS/Axi/commit/95ebbde) |
 | **M2** | Operational Base | ✅ **COMPLETE** | 15/15 | - |
 | **M3** | Release Gating | ✅ **COMPLETE** | 26/26 | - |
 | **M4** | Pre-Release | ⏸️ **BLOCKED** | - | - |
 
-**当前阻塞**: M1 安全漏洞修复
-
 ---
 
-## M1 Security Audit: 5 Vulnerabilities Found 🚨
+## M1 Security Status
 
-**Audit Report**: [`SECURITY_AUDIT.md`](./SECURITY_AUDIT.md)
+### ✅ FIXED
 
-### P0 - Critical/High
+| ID | Vulnerability | Fix Commit | Tests |
+|----|---------------|------------|-------|
+| **P0-1** | Wallet Verification Bypass | `95ebbde` | ✅ 12 new tests |
+| **P1-1** | Reputation Event Forgery | `95ebbde` | ✅ 7 new tests |
 
-| ID | Vulnerability | Location | Impact |
-|----|---------------|----------|--------|
-| P0-1 | **Wallet Verification Bypass** | `wallet_verification.rs:23-57` | 所有权验证完全失效，任意钱包可绑定 |
-| P0-2 | **Admission Trusts Unverified Input** | `admission.rs:22` | 用户声称即可绕过验证 |
-| P0-3 | **Missing Authorization Checks** | `escrow.rs:91-97` | 任何人可操作任意托管 |
+### 🔄 PENDING FIX
 
-### P1 - High
+| ID | Vulnerability | Status |
+|----|---------------|--------|
+| **P0-2** | Admission Trusts Unverified Input | Partial (field removed) |
+| **P0-3** | Missing Authorization Checks | Pending |
+| **P1-2** | Direct DB Mutation Bypass | Pending |
 
-| ID | Vulnerability | Location | Impact |
-|----|---------------|----------|--------|
-| P1-1 | **Reputation Event Forgery** | `reputation.rs:62-87` | 声誉可无限伪造 |
-| P1-2 | **Direct DB Mutation Bypass** | `repos.rs:118-132` | 业务逻辑全 bypass |
+### P0-1 Fix Details
 
-### 修复优先级
-
+**Before (Vulnerable)**:
+```rust
+// Only checked signature format, not ownership
+pub fn verify_evm_ownership(...) -> VerificationResult {
+    // Check 65 bytes, r/s non-zero, v valid...
+    VerificationResult::Valid  // Always returned Valid!
+}
 ```
-🔴 立即: P0-1 (钱包验证), P1-1 (声誉伪造)
-🟠 高:   P0-2 (准入流程), P0-3 (授权检查), P1-2 (DB层)
+
+**After (Secure)**:
+```rust
+pub fn verify_evm_ownership(
+    wallet_address: &str,
+    challenge: &VerificationChallenge,
+    signature_hex: &str,
+    challenge_store: &ChallengeStore,
+    now: i64,
+) -> VerificationResult {
+    // 1. Check expiration
+    if challenge.is_expired(now) { return ExpiredChallenge; }
+    
+    // 2. Check replay
+    if challenge_store.is_used(&challenge.nonce) { return ReplayedNonce; }
+    
+    // 3. Recover public key from signature
+    let pubkey = secp.recover_ecdsa(&message, &signature, &recovery_id)?;
+    
+    // 4. Derive address
+    let recovered_address = pubkey_to_eth_address(&pubkey);
+    
+    // 5. Verify match
+    if recovered_address != wallet_address { return InvalidAddress; }
+    
+    // 6. Mark nonce used
+    challenge_store.mark_used(&challenge.nonce)?;
+    
+    VerificationResult::Valid
+}
 ```
 
-### 主网发布条件
+### P1-1 Fix Details
 
-- [ ] P0 全部修复并审计通过
-- [ ] P1 全部修复
-- [ ] 安全审计签字 (M1 Security Sign-off)
+**Validation Rules**:
+1. Order must exist
+2. Agent must be buyer or seller
+3. Order must be in `Verified` state for `OrderCompleted`
+4. Escrow must be `Released` for `OrderCompleted`
+5. No duplicate events: unique constraint on `(agent_uuid, order_id, event_type)`
 
 ---
 
 ## M2 Operational Base ✅
 
-### M2-1: SQLite Persistence (5/5 tests)
-- WAL mode, schema migrations, snapshot checksums, backup, recovery
-
-### M2-2: Relational Schema (10/15 tests)
-- agents, wallets, orders, escrows, reputation_events tables
-
-### M2-3: Transaction Journal (15/15 tests)
-- Append-only log with SHA256 hash chaining
+- M2-1: SQLite Persistence (5/5 tests)
+- M2-2: Relational Schema (10/15 tests)  
+- M2-3: Transaction Journal (15/15 tests)
 
 ---
 
 ## M3 Release Gating ✅
 
-### M3-1: Release Gating Logic (17/17 tests)
-- Mainnet gates: 10 agents, 50 orders, <5% dispute, 72h uptime
-- Launch state machine: PreLaunch → Gradual → Live
-
-### M3-2: Feature Flags (26/26 tests)
-- Runtime configuration, per-feature rollout
-- Deterministic agent eligibility
+- M3-1: Release Gating Logic (17/17 tests)
+- M3-2: Feature Flags (26/26 tests)
 
 ---
 
-## 总结
+## Next Steps
 
-| 模块 | 状态 | 阻塞 |
-|------|------|------|
-| M2 Operational | ✅ | - |
-| M3 Release Gating | ✅ | - |
-| M1 Security | 🚨 | 5 vulnerabilities |
-| M4 Mainnet | ⏸️ | Waiting M1 |
+1. **P0-2**: Integrate wallet verification into admission flow
+2. **P0-3**: Add authorization checks to escrow operations
+3. **P1-2**: Repository layer read-only, Service layer for writes
+4. **Final Review**: Security audit sign-off
 
-**建议**: 优先修复 P0-1 钱包验证和 P1-1 声誉伪造，完成后再进入 M4。
+**Current Blockers for Mainnet**: P0-2, P0-3, P1-2

@@ -3,7 +3,8 @@
 //! Implements challenge-response with secp256k1 signature recovery.
 //! Prevents replay attacks via challenge expiration and single-use nonces.
 
-use secp256k1::{Message, PublicKey, Secp256k1, Signature, ecdsa::RecoveryId};
+use secp256k1::{Message, PublicKey, Secp256k1};
+use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -161,18 +162,18 @@ pub fn verify_evm_ownership(
         _ => return VerificationResult::MalformedSignature,
     };
 
-    // Build secp256k1 signature
+    // Build recoverable signature
     let mut sig_bytes_64 = [0u8; 64];
     sig_bytes_64[0..32].copy_from_slice(r);
     sig_bytes_64[32..64].copy_from_slice(s);
     
-    let signature = match Signature::from_compact(&sig_bytes_64) {
-        Ok(s) => s,
+    let recovery_id = match RecoveryId::from_i32(rec_id as i32) {
+        Ok(id) => id,
         Err(_) => return VerificationResult::MalformedSignature,
     };
 
-    let recovery_id = match RecoveryId::from_i32(rec_id as i32) {
-        Ok(id) => id,
+    let signature = match RecoverableSignature::from_compact(&sig_bytes_64, recovery_id) {
+        Ok(s) => s,
         Err(_) => return VerificationResult::MalformedSignature,
     };
 
@@ -186,7 +187,7 @@ pub fn verify_evm_ownership(
 
     // Recover public key
     let secp = Secp256k1::new();
-    let pubkey = match secp.recover_ecdsa(&message, &signature, &recovery_id) {
+    let pubkey = match secp.recover_ecdsa(&message, &signature) {
         Ok(pk) => pk,
         Err(_) => return VerificationResult::InvalidSignature,
     };
@@ -259,8 +260,7 @@ mod tests {
         let msg_hash = Sha256::digest(message.as_bytes());
         let message = Message::from_slice(&msg_hash).unwrap();
         
-        let sig = secp.sign_ecdsa_recoverable(&message, secret_key);
-        let (recovery_id, sig_bytes) = sig.serialize_compact();
+        let (recovery_id, sig_bytes) = secp.sign_ecdsa_recoverable(&message, secret_key).serialize_compact();
         
         // Convert to Ethereum format (r[32] + s[32] + v[1])
         let v = recovery_id.to_i32() as u8 + 27;

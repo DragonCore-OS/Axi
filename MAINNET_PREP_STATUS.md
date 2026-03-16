@@ -2,11 +2,11 @@
 
 ## Milestone Overview
 
-| Milestone | Module | Status | Tests |
-|-----------|--------|--------|-------|
-| **M1** | Security Audit + Fixes | 🔄 Pending | - |
-| **M2-1** | SQLite Persistence + Recovery | ✅ Complete | 5/5 |
-| M2-2 | DB schema for Identity/Market | 🔄 Next | - |
+| Milestone | Module | Status | Tests | Commit |
+|-----------|--------|--------|-------|--------|
+| **M1** | Security Audit + Fixes | 🔄 Pending | - | - |
+| **M2-1** | SQLite Persistence + Recovery | ✅ **AUDITED** | 5/5 | [`27a83b2`](https://github.com/DragonCore-OS/Axi/commit/27a83b2) |
+| M2-2 | DB schema for Identity/Market | 🔄 Next | - | - |
 | M2-3 | Transaction journal | Pending | - |
 | M3-1 | Release gating logic | Pending | - |
 | M3-2 | Feature flags + gradual rollout | Pending | - |

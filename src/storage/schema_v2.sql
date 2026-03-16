@@ -116,6 +116,11 @@ CREATE INDEX IF NOT EXISTS idx_rep_events_agent ON reputation_events(agent_uuid)
 CREATE INDEX IF NOT EXISTS idx_rep_events_order ON reputation_events(order_id);
 CREATE INDEX IF NOT EXISTS idx_rep_events_created ON reputation_events(created_at);
 
+-- P1-1 Fix: Prevent duplicate reputation events for same order
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rep_events_unique 
+    ON reputation_events(agent_uuid, order_id, event_type) 
+    WHERE order_id IS NOT NULL;
+
 -- =====================================================
 -- VIEWS FOR COMMON QUERIES
 -- =====================================================

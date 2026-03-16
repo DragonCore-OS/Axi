@@ -623,12 +623,13 @@ mod tests {
     // =====================================================
 
     #[test]
-    fn v3_schema_migrates_to_version_3() {
+    fn v3_schema_migrates_to_at_least_version_3() {
         let path = temp_db_path("v3_migration");
         let store = PersistentStore::open(&path).unwrap();
         let version = store.schema_version().unwrap();
 
-        assert_eq!(version, 3);
+        // Schema is now at v4, but v3 tables should exist
+        assert!(version >= 3);
 
         // Verify journal table exists
         let conn = store.connect().unwrap();

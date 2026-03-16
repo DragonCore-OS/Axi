@@ -19,7 +19,7 @@ pub struct AdmissionRequest {
     pub display_name: String,
     pub signing_public_key: String,
     pub wallet_address: String,
-    pub wallet_verified: bool,
+    // P0-2 Fix: Removed wallet_verified - must be verified by system, not user claim
     pub device_evidence: String,
 }
 
@@ -53,9 +53,9 @@ impl AdmissionPipeline {
         let proof = verifier.generate_commitments(&evidence, &agent_secret);
 
         let mut state = AdmissionState::Pending;
-        if !req.wallet_verified {
-            state = AdmissionState::Rejected;
-        } else if self
+        // P0-2 Fix: Wallet verification must be done by system, not user claim
+        // TODO: Integrate wallet verification service before creating agent
+        if self
             .seen_comparison_commitments
             .contains(&proof.comparison_commitment)
         {
@@ -102,7 +102,6 @@ mod tests {
             display_name: "Agent 1".into(),
             signing_public_key: "pk1".into(),
             wallet_address: "0x1".into(),
-            wallet_verified: true,
             device_evidence: "same-device".into(),
         };
 
@@ -111,7 +110,6 @@ mod tests {
             display_name: "Agent 2".into(),
             signing_public_key: "pk2".into(),
             wallet_address: "0x2".into(),
-            wallet_verified: true,
             device_evidence: "same-device".into(),
         };
 

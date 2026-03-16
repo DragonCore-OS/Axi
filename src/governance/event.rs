@@ -396,6 +396,7 @@ mod tests {
                 trigger_context: Some("manual veto".to_string()),
             });
         
+        std::fs::create_dir_all("test_vectors").unwrap();
         let mut file = std::fs::File::create("test_vectors/axi_sample.jsonl").unwrap();
         writeln!(file, "{}", event1.to_jsonl().unwrap()).unwrap();
         writeln!(file, "{}", event2.to_jsonl().unwrap()).unwrap();

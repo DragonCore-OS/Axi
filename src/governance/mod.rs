@@ -12,6 +12,7 @@ pub mod event;
 pub mod broadcast;
 pub mod store;
 pub mod projection;
+pub mod runtime;
 
 pub use event::{
     EventScope, EventChannel, GovernanceEventType, Severity,
@@ -20,3 +21,4 @@ pub use event::{
 pub use broadcast::{Broadcaster, EventSink, DiblBroadcaster};
 pub use store::{JsonlEventStore, InMemoryEventStore, EventStore};
 pub use projection::{RunProjection, OperatorView, RiskStatus};
+pub use runtime::GovernanceRuntime;

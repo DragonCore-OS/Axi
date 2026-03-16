@@ -137,8 +137,8 @@ pub struct CorrelationContext {
     pub correlation_id: Option<String>,
     /// 父事件 ID（因果链）
     pub parent_event_id: Option<Uuid>,
-    /// 触发该事件的 actor
-    pub triggered_by: String,
+    /// 触发该事件的 actor (seat/operator/system)
+    pub actor: String,
     /// 触发原因/上下文
     pub trigger_context: Option<String>,
 }
@@ -148,7 +148,7 @@ impl Default for CorrelationContext {
         Self {
             correlation_id: None,
             parent_event_id: None,
-            triggered_by: "system".to_string(),
+            actor: "system".to_string(),
             trigger_context: None,
         }
     }
@@ -314,7 +314,7 @@ mod tests {
             .with_correlation(CorrelationContext {
                 correlation_id: Some("corr-123".to_string()),
                 parent_event_id: None,
-                triggered_by: "operator".to_string(),
+                actor: "operator".to_string(),
                 trigger_context: Some("manual start".to_string()),
             });
 
@@ -349,5 +349,59 @@ mod tests {
         
         assert!(EventScope::Exportable.is_operator_visible());
         assert!(EventScope::Exportable.is_exportable());
+    }
+
+    #[test]
+    fn generate_sample_for_dragoncore() {
+        use std::io::Write;
+        
+        // RunCreated
+        let event1 = GovernanceEvent::new("sample-run-001", GovernanceEventType::RunCreated, "Run created for feature X implementation")
+            .with_correlation(CorrelationContext {
+                correlation_id: Some("corr-001".to_string()),
+                parent_event_id: None,
+                actor: "operator".to_string(),
+                trigger_context: Some("manual start".to_string()),
+            });
+        
+        // SeatStarted (Internal)
+        let event2 = GovernanceEvent::new("sample-run-001", GovernanceEventType::SeatStarted, "Seat Tianshu started analysis phase")
+            .with_seat("Tianshu")
+            .with_scope(EventScope::Internal)
+            .with_details("internal/tianshu_plan.md")
+            .with_correlation(CorrelationContext {
+                correlation_id: Some("corr-001".to_string()),
+                parent_event_id: Some(event1.event_id),
+                actor: "Tianshu".to_string(),
+                trigger_context: None,
+            });
+        
+        // RiskRaised
+        let event3 = GovernanceEvent::new("sample-run-001", GovernanceEventType::RiskRaised, "Potential deadlock in concurrent module access")
+            .with_seat("Yuheng")
+            .with_severity(Severity::Warn)
+            .with_correlation(CorrelationContext {
+                correlation_id: Some("risk-001".to_string()),
+                parent_event_id: None,
+                actor: "system".to_string(),
+                trigger_context: Some("automated scan".to_string()),
+            });
+        
+        // VetoExercised
+        let event4 = GovernanceEvent::new("sample-run-001", GovernanceEventType::VetoExercised, "Veto exercised by operator on risk-001")
+            .with_correlation(CorrelationContext {
+                correlation_id: Some("risk-001".to_string()),
+                parent_event_id: Some(event3.event_id),
+                actor: "operator".to_string(),
+                trigger_context: Some("manual veto".to_string()),
+            });
+        
+        let mut file = std::fs::File::create("test_vectors/axi_sample.jsonl").unwrap();
+        writeln!(file, "{}", event1.to_jsonl().unwrap()).unwrap();
+        writeln!(file, "{}", event2.to_jsonl().unwrap()).unwrap();
+        writeln!(file, "{}", event3.to_jsonl().unwrap()).unwrap();
+        writeln!(file, "{}", event4.to_jsonl().unwrap()).unwrap();
+        
+        println!("Generated test_vectors/axi_sample.jsonl");
     }
 }

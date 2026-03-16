@@ -5,7 +5,10 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const CURRENT_SCHEMA_VERSION: i64 = 1;
+pub mod repos;
+pub use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
+
+const CURRENT_SCHEMA_VERSION: i64 = 2;
 
 #[derive(Debug, Clone)]
 pub struct PersistentStore {
@@ -131,6 +134,7 @@ impl PersistentStore {
     }
 
     fn run_migrations(conn: &Connection) -> Result<(), String> {
+        // Base migration (v1)
         conn.execute_batch(
             r#"
             PRAGMA journal_mode = WAL;
@@ -160,10 +164,24 @@ impl PersistentStore {
             .optional()
             .map_err(|e| e.to_string())?;
 
-        if version.is_none() {
+        let current_version = version.unwrap_or(0);
+
+        // Migration v1: Initial schema
+        if current_version < 1 {
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
-                params![CURRENT_SCHEMA_VERSION, Utc::now().to_rfc3339()],
+                params![1, Utc::now().to_rfc3339()],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Migration v2: Relational schema for Identity/Market
+        if current_version < 2 {
+            conn.execute_batch(include_str!("schema_v2.sql"))
+                .map_err(|e| e.to_string())?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+                params![2, Utc::now().to_rfc3339()],
             )
             .map_err(|e| e.to_string())?;
         }
@@ -299,6 +317,278 @@ mod tests {
                 escrow_total_axi: 300,
             })
         );
+
+        let _ = fs::remove_file(path);
+    }
+
+    // =====================================================
+    // M2-2: Relational Schema Tests
+    // =====================================================
+
+    use crate::identity::registry::{AgentIdentity, AgentStatus, WalletRef, WalletRole, WalletType};
+    use crate::market::order::{Order, OrderStatus};
+    use crate::market::escrow::{EscrowRecord, EscrowStatus, DeliveryProof};
+    use crate::identity::reputation::{ReputationEvent, ReputationEventType};
+
+    fn create_test_agent() -> AgentIdentity {
+        create_test_agent_with_uuid(Uuid::new_v4())
+    }
+
+    fn create_test_agent_with_uuid(agent_uuid: Uuid) -> AgentIdentity {
+        AgentIdentity {
+            agent_uuid,
+            agent_id: format!("agent{}", &agent_uuid.to_string().replace("-", "")[..16]),
+            display_name: "Test Agent".to_string(),
+            public_key: "pubkey123".to_string(),
+            representative_record_commitment: "commit1".to_string(),
+            comparison_commitment: "commit2".to_string(),
+            reputation_score: 0,
+            status: AgentStatus::Pending,
+            wallets: vec![WalletRef {
+                wallet_id: Uuid::new_v4(),
+                agent_uuid,
+                agent_id: format!("agent{}", &agent_uuid.to_string().replace("-", "")[..16]),
+                wallet_type: WalletType::AxiNative,
+                address: format!("axi1{}", &agent_uuid.to_string().replace("-", "")[..20]),
+                role: WalletRole::Primary,
+                verified_ownership: true,
+                added_at: 1234567890,
+                active_until: None,
+            }],
+            created_at: 1234567890,
+        }
+    }
+
+    #[test]
+    fn v2_schema_migrates_to_version_2() {
+        let path = temp_db_path("v2_migration");
+        let store = PersistentStore::open(&path).unwrap();
+        let version = store.schema_version().unwrap();
+
+        assert_eq!(version, 2);
+
+        // Verify tables exist
+        let conn = store.connect().unwrap();
+        let tables: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+
+        assert!(tables.contains(&"agents".to_string()));
+        assert!(tables.contains(&"wallets".to_string()));
+        assert!(tables.contains(&"orders".to_string()));
+        assert!(tables.contains(&"escrows".to_string()));
+        assert!(tables.contains(&"reputation_events".to_string()));
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn agent_repo_crud() {
+        let path = temp_db_path("agent_repo");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+        let repo = AgentRepository::new(&conn);
+
+        let agent = create_test_agent();
+        repo.create(&agent).unwrap();
+
+        // Read by UUID
+        let fetched = repo.get_by_uuid(&agent.agent_uuid).unwrap();
+        assert!(fetched.is_some());
+        let fetched = fetched.unwrap();
+        assert_eq!(fetched.agent_id, agent.agent_id);
+        assert_eq!(fetched.wallets.len(), 1);
+
+        // Read by agent_id
+        let fetched = repo.get_by_agent_id(&agent.agent_id).unwrap();
+        assert!(fetched.is_some());
+
+        // Update status
+        repo.update_status(&agent.agent_uuid, AgentStatus::Approved).unwrap();
+        let updated = repo.get_by_uuid(&agent.agent_uuid).unwrap().unwrap();
+        assert!(matches!(updated.status, AgentStatus::Approved));
+
+        // Update reputation
+        repo.update_reputation_score(&agent.agent_uuid, 10).unwrap();
+        let updated = repo.get_by_uuid(&agent.agent_uuid).unwrap().unwrap();
+        assert_eq!(updated.reputation_score, 10);
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn order_repo_crud() {
+        let path = temp_db_path("order_repo");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+
+        // Create agent first (FK constraint)
+        let agent_repo = AgentRepository::new(&conn);
+        let buyer = create_test_agent();
+        let seller = create_test_agent_with_uuid(Uuid::new_v4());
+        agent_repo.create(&buyer).unwrap();
+        agent_repo.create(&seller).unwrap();
+
+        // Create order
+        let order_repo = OrderRepository::new(&conn);
+        let order = Order {
+            order_id: Uuid::new_v4(),
+            listing_id: Uuid::new_v4(),
+            buyer_agent_uuid: buyer.agent_uuid,
+            seller_agent_uuid: seller.agent_uuid,
+            amount_axi: 100,
+            amount_locked_axi: 100,
+            status: OrderStatus::Open,
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+        };
+        order_repo.create(&order).unwrap();
+
+        // Read
+        let fetched = order_repo.get(&order.order_id).unwrap();
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().amount_axi, 100);
+
+        // List by buyer
+        let orders = order_repo.list_by_buyer(&buyer.agent_uuid).unwrap();
+        assert_eq!(orders.len(), 1);
+
+        // Update status
+        order_repo.update_status(&order.order_id, OrderStatus::InProgress).unwrap();
+        let updated = order_repo.get(&order.order_id).unwrap().unwrap();
+        assert!(matches!(updated.status, OrderStatus::InProgress));
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn escrow_repo_crud() {
+        let path = temp_db_path("escrow_repo");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+
+        // Setup agents and order
+        let agent_repo = AgentRepository::new(&conn);
+        let buyer = create_test_agent();
+        let seller = create_test_agent_with_uuid(Uuid::new_v4());
+        agent_repo.create(&buyer).unwrap();
+        agent_repo.create(&seller).unwrap();
+
+        let order_repo = OrderRepository::new(&conn);
+        let order = Order {
+            order_id: Uuid::new_v4(),
+            listing_id: Uuid::new_v4(),
+            buyer_agent_uuid: buyer.agent_uuid,
+            seller_agent_uuid: seller.agent_uuid,
+            amount_axi: 200,
+            amount_locked_axi: 200,
+            status: OrderStatus::InProgress,
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+        };
+        order_repo.create(&order).unwrap();
+
+        // Create escrow
+        let escrow_repo = EscrowRepository::new(&conn);
+        let escrow = EscrowRecord {
+            escrow_id: Uuid::new_v4(),
+            order_id: order.order_id,
+            buyer_agent_uuid: buyer.agent_uuid,
+            seller_agent_uuid: seller.agent_uuid,
+            amount_axi: 200,
+            escrow_status: EscrowStatus::Pending,
+            delivery_proof: None,
+            buyer_verified_at: None,
+            auto_complete_after: None,
+            dispute_reason: None,
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+        };
+        escrow_repo.create(&escrow).unwrap();
+
+        // Read
+        let fetched = escrow_repo.get(&escrow.escrow_id).unwrap();
+        assert!(fetched.is_some());
+
+        // Read by order
+        let fetched = escrow_repo.get_by_order(&order.order_id).unwrap();
+        assert!(fetched.is_some());
+
+        // Status transition
+        escrow_repo.update_status(&escrow.escrow_id, EscrowStatus::Funded).unwrap();
+        let updated = escrow_repo.get(&escrow.escrow_id).unwrap().unwrap();
+        assert!(matches!(updated.escrow_status, EscrowStatus::Funded));
+
+        // Submit delivery
+        let proof = DeliveryProof {
+            cid: Some("QmTest123".to_string()),
+            uri: Some("https://example.com/delivery".to_string()),
+            note: Some("Delivered".to_string()),
+            submitted_at: Utc::now().to_rfc3339(),
+        };
+        escrow_repo.submit_delivery(&escrow.escrow_id, &proof).unwrap();
+        let updated = escrow_repo.get(&escrow.escrow_id).unwrap().unwrap();
+        assert!(updated.delivery_proof.is_some());
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn reputation_repo_audit_log() {
+        let path = temp_db_path("reputation_repo");
+        let store = PersistentStore::open(&path).unwrap();
+        let conn = store.connect().unwrap();
+
+        // Setup agent and order (FK constraints)
+        let agent_repo = AgentRepository::new(&conn);
+        let agent = create_test_agent();
+        agent_repo.create(&agent).unwrap();
+
+        let order_repo = OrderRepository::new(&conn);
+        let order = Order {
+            order_id: Uuid::new_v4(),
+            listing_id: Uuid::new_v4(),
+            buyer_agent_uuid: agent.agent_uuid,
+            seller_agent_uuid: agent.agent_uuid,
+            amount_axi: 100,
+            amount_locked_axi: 100,
+            status: OrderStatus::Open,
+            created_at: Utc::now().to_rfc3339(),
+            updated_at: Utc::now().to_rfc3339(),
+        };
+        order_repo.create(&order).unwrap();
+
+        // Record events
+        let rep_repo = ReputationRepository::new(&conn);
+        let event1 = ReputationEvent {
+            event_id: Uuid::new_v4(),
+            agent_uuid: agent.agent_uuid,
+            order_id: None,
+            event_type: ReputationEventType::OrderCompleted,
+            delta: 5,
+            reason: "Order completed successfully".to_string(),
+            created_at: Utc::now().to_rfc3339(),
+        };
+        rep_repo.record_event(&event1).unwrap();
+
+        let event2 = ReputationEvent {
+            event_id: Uuid::new_v4(),
+            agent_uuid: agent.agent_uuid,
+            order_id: Some(order.order_id),
+            event_type: ReputationEventType::PositiveRating,
+            delta: 2,
+            reason: "5-star rating".to_string(),
+            created_at: Utc::now().to_rfc3339(),
+        };
+        rep_repo.record_event(&event2).unwrap();
+
+        // List events
+        let events = rep_repo.list_by_agent(&agent.agent_uuid).unwrap();
+        assert_eq!(events.len(), 2);
 
         let _ = fs::remove_file(path);
     }

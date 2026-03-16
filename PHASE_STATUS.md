@@ -16,91 +16,105 @@
                                  ↓
 [PHASE: PHASE_A_IMPL]       ✅ COMPLETE (6/6 项通过)
                                  ↓
-[PHASE: PHASE_B_IMPL]       🔄 ACTIVE ← 当前阶段
+[PHASE: PHASE_B_IMPL]       ✅ COMPLETE (6/6 项通过)
+                                 ↓
+[PHASE: ADOPTION_ASSETS]    ✅ COMPLETE ← 当前阶段完成
 ```
 
 ---
 
-## Phase A 完成总结
+## 完成总结
 
-### 验收项状态
+### Phase A - Identity Base ✅
 
-| 验收项 | 判定 | 提交 |
+| 验收项 | 状态 | 提交 |
 |--------|------|------|
-| P0-1 Agent Identity Registry | ✅ 通过 | `381db11` |
-| P0-2 Admission Request Pipeline | ✅ 通过 | `381db11` |
-| P0-3 Wallet Binding Verification | ✅ 通过 | `dd52f58` |
-| P1-4 Device Uniqueness Comparison | ✅ 通过 | `381db11` |
-| P1-5 Public/Private Profile Split | ✅ 通过 | `381db11` |
-| P1-6 Moderation State Skeleton | ✅ 通过 | `381db11` |
+| P0-1 Agent Identity Registry | ✅ | `381db11` |
+| P0-2 Admission Request Pipeline | ✅ | `381db11` |
+| P0-3 Wallet Binding Verification | ✅ | `dd52f58` |
+| P1-4 Device Uniqueness Comparison | ✅ | `381db11` |
+| P1-5 Public/Private Profile Split | ✅ | `381db11` |
+| P1-6 Moderation State Skeleton | ✅ | `381db11` |
 
-**Phase A Status**: ✅ **COMPLETE (6/6)**
+### Phase B - Transaction Base ✅
+
+| 验收项 | 状态 | 提交 |
+|--------|------|------|
+| B1-1 Listing Skeleton | ✅ | `6a61705` |
+| B1-2 Order Skeleton | ✅ | `6a61705` |
+| B2-1 Escrow State Machine | ✅ | `aaf7392` |
+| B2-2 Delivery Verification | ✅ | `aaf7392` |
+| B3-1 Reputation Event Write-Back | ✅ | `d0422af` |
+| B3-2 Reputation Impact | ✅ | `d0422af` |
+
+### Adoption Assets ✅
+
+| 资产 | 文档 | 状态 |
+|------|------|------|
+| AXI One-Pager | `docs/adoption/AXI_ONE_PAGER.md` | ✅ |
+| Agent Onboarding Guide | `docs/adoption/AGENT_ONBOARDING_GUIDE.md` | ✅ |
+| 3 Real Cases | `docs/adoption/REAL_CASES.md` | ✅ |
+
+**案例统计**:
+- Inference Service: 9 orders, 225 AXI
+- GPU Rental: 4 orders, 120 AXI
+- Dataset Auction: Template ready for Phase C
 
 ---
 
-## Phase B 启动
+## 当前状态
 
-### 目标
+**AXI 核心功能**: ✅ **COMPLETE**
 
-建立**交易闭环**：Listing → Order → Escrow → Settlement → Reputation
+```
+Identity → Market → Escrow → Settlement → Reputation ✅
+```
 
-### 三个核心模块
+**对外材料**: ✅ **COMPLETE**
 
-| 顺序 | 模块 | 验收文档 |
-|------|------|----------|
-| 1 | **Market** | `PHASE_B_ACCEPTANCE.md` B1 |
-| 2 | **Escrow** | `PHASE_B_ACCEPTANCE.md` B2 |
-| 3 | **Reputation** | `PHASE_B_ACCEPTANCE.md` B3 |
+```
+One-Pager → Onboarding Guide → Real Cases ✅
+```
 
-### 主线 vs 副线
+---
 
-| 类型 | 内容 | 优先级 |
+## 下一阶段选项
+
+| 选项 | 内容 | 优先级 |
 |------|------|--------|
-| **主线** | Phase B 实现 (Market/Escrow/Reputation) | P0 - 必须先完成 |
-| **副线** | Adoption Team 资产 (one-pager, guide) | P1 - 可并行准备 |
-
-**原则**: 没有 Phase B 交易闭环，Adoption 对外文档缺少"如何成交"核心证据。
-
----
-
-## 当前等待
-
-**状态**: 🔄 **等待第一个 `feat(phase-b):` 提交**
-
-**提交格式**:
-```
-commit: feat(phase-b): implement market listing and order skeleton
-target: B1-1 / B1-2 Market Base
-evidence:
-- src/market/listing.rs
-- src/market/order.rs
-- tests: cargo test market
-```
+| **Phase C** | Auction Base (拍卖系统) | P1 |
+| **Mainnet Prep** | 部署准备、安全审计 | P1 |
+| **Adoption Launch** | 对外推广、招募 agent | P2 |
+| **Governance** | 治理机制、DAO 过渡 | P3 |
 
 ---
 
 ## 文档索引
 
-| 文档 | 用途 | 状态 |
-|------|------|------|
-| `PHASE_A_ACCEPTANCE.md` | Phase A 验收（已完成） | ✅ Archived |
-| `PHASE_B_ACCEPTANCE.md` | Phase B 验收（进行中） | 🔄 Active |
-| `docs/architecture/MARKET.md` | Market 设计参考 | 📖 Reference |
-| `docs/architecture/REPUTATION_BINDING.md` | Reputation 设计参考 | 📖 Reference |
+| 路径 | 内容 |
+|------|------|
+| `PHASE_A_ACCEPTANCE.md` | Phase A 验收标准 (已完成) |
+| `PHASE_B_ACCEPTANCE.md` | Phase B 验收标准 (已完成) |
+| `docs/adoption/AXI_ONE_PAGER.md` | 一页介绍 |
+| `docs/adoption/AGENT_ONBOARDING_GUIDE.md` | 完整指南 |
+| `docs/adoption/REAL_CASES.md` | 真实案例 |
+| `docs/architecture/` | 架构文档 |
+| `docs/identity/` | 身份政策 |
 
 ---
 
 ## Git 提交历史
 
 ```
-dd52f58 feat(phase-b): implement wallet binding signature verification  [P0-3 ✅]
-381db11 feat(phase-a): implement identity registry and admission skeleton [P0-1,2 P1-4,5,6 ✅]
-49f4687 docs: Record interrupted experiment run - NO Phase A credit
-9d3daeb docs: Mark spec as officially sealed
+31aa597 docs(adoption): Add Adoption Team assets                    [ADOPTION ✅]
+d0422af feat(phase-b): implement reputation event write-back        [B3 ✅]
+aaf7392 feat(phase-b): implement escrow state machine               [B2 ✅]
+6a61705 feat(phase-b): implement market listing and order skeleton  [B1 ✅]
+381db11 feat(phase-a): implement identity registry...               [Phase A ✅]
 ...
 ```
 
 ---
 
-**当前状态**: Phase B 实现阶段，等待第一个提交。  
-**验收员**: 就绪，等待 `feat(phase-b):` 提交。
+**当前状态**: Phase A + Phase B + Adoption Assets 全部完成 ✅  
+**等待**: 下一阶段决策 (Phase C / Mainnet / Adoption Launch)

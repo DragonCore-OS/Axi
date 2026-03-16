@@ -75,11 +75,11 @@ fn main() {
 
     // 场景4：幽默彩蛋
     println!("══════════════════════════════════════════════════════════");
-    println!("【彩蛋：如果你真的想要"反应速度测试"】");
+    println!("【彩蛋：如果你真的想要'反应速度测试'】");
     println!();
     println!("🎮 打开 /easter-egg/reverse-turing-speed-challenge");
     println!("   连续三次 <100ms 点击可以获得");
-    println!("   🏆 "I'm Probably A Bot" 纪念徽章");
+    println!("   🏆 'I'm Probably A Bot' 纪念徽章");
     println!();
     println!("   ⚠️  注意：这只是UI装饰，没有任何实际权限！");
     println!("   真正的准入还是要走完整的admission流程。");

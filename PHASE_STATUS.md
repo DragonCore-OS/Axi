@@ -10,82 +10,86 @@
 ```
 [PHASE: DOCUMENT_PREP]      ✅ COMPLETE
                                  ↓
-[PHASE: TRUTH_SOURCE_AUDIT] ✅ COMPLETE (code-level canonical fixed)
+[PHASE: TRUTH_SOURCE_AUDIT] ✅ COMPLETE
                                  ↓
 [PHASE: SPEC_SEAL]          ✅ COMPLETE
                                  ↓
-[PHASE: PHASE_A_IMPL]       ✅ COMPLETE (6/6 项通过)
+[PHASE: PHASE_A_IMPL]       ✅ COMPLETE (6/6)
                                  ↓
-[PHASE: PHASE_B_IMPL]       ✅ COMPLETE (6/6 项通过)
+[PHASE: PHASE_B_IMPL]       ✅ COMPLETE (6/6)
                                  ↓
-[PHASE: ADOPTION_ASSETS]    ✅ COMPLETE ← 当前阶段完成
+[PHASE: ADOPTION_ASSETS]    ✅ COMPLETE (3/3)
+                                 ↓
+[PHASE: MAINNET_PREP]       🔄 ACTIVE ← NOW
+                                 ↓
+[PHASE: PHASE_C_AUCTION]    ⏸️ DEFERRED
+                                 ↓
+[PHASE: ADOPTION_LAUNCH]    ⏸️ BLOCKED
 ```
 
 ---
 
-## 完成总结
+## Mainnet Prep 目标
 
-### Phase A - Identity Base ✅
+将现有的 `Identity → Market → Escrow → Reputation` 闭环从**能跑**推进到**能安全上线**。
 
-| 验收项 | 状态 | 提交 |
-|--------|------|------|
-| P0-1 Agent Identity Registry | ✅ | `381db11` |
-| P0-2 Admission Request Pipeline | ✅ | `381db11` |
-| P0-3 Wallet Binding Verification | ✅ | `dd52f58` |
-| P1-4 Device Uniqueness Comparison | ✅ | `381db11` |
-| P1-5 Public/Private Profile Split | ✅ | `381db11` |
-| P1-6 Moderation State Skeleton | ✅ | `381db11` |
+### 四大主线任务
 
-### Phase B - Transaction Base ✅
+| 模块 | 目标 | 验收文档 |
+|------|------|----------|
+| **M1 安全审计** | Wallet/Admission/Escrow/Reputation/对象篡改边界 | `PHASE_MAINNET_PREP.md` M1 |
+| **M2 运行稳定性** | 持久化、崩溃恢复、日志审计、观测、配置管理 | `PHASE_MAINNET_PREP.md` M2 |
+| **M3 主网发布门槛** | 测试覆盖、安全门、运行手册 | `PHASE_MAINNET_PREP.md` M3 |
+| **M4 小规模预发布** | 白名单、限流、观测、故障记录 | `PHASE_MAINNET_PREP.md` M4 |
 
-| 验收项 | 状态 | 提交 |
-|--------|------|------|
-| B1-1 Listing Skeleton | ✅ | `6a61705` |
-| B1-2 Order Skeleton | ✅ | `6a61705` |
-| B2-1 Escrow State Machine | ✅ | `aaf7392` |
-| B2-2 Delivery Verification | ✅ | `aaf7392` |
-| B3-1 Reputation Event Write-Back | ✅ | `d0422af` |
-| B3-2 Reputation Impact | ✅ | `d0422af` |
+### 阻塞项说明
 
-### Adoption Assets ✅
-
-| 资产 | 文档 | 状态 |
+| 阶段 | 状态 | 原因 |
 |------|------|------|
-| AXI One-Pager | `docs/adoption/AXI_ONE_PAGER.md` | ✅ |
-| Agent Onboarding Guide | `docs/adoption/AGENT_ONBOARDING_GUIDE.md` | ✅ |
-| 3 Real Cases | `docs/adoption/REAL_CASES.md` | ✅ |
-
-**案例统计**:
-- Inference Service: 9 orders, 225 AXI
-- GPU Rental: 4 orders, 120 AXI
-- Dataset Auction: Template ready for Phase C
+| Phase C Auction | ⏸️ DEFERRED | 更高风险，等主网稳定后再加 |
+| Adoption Launch | ⏸️ BLOCKED | 规模放大缺陷，需先验证稳定性 |
 
 ---
 
-## 当前状态
+## 历史完成项
 
-**AXI 核心功能**: ✅ **COMPLETE**
+### Phase A ✅ (6/6)
+- P0-1 Agent Identity Registry
+- P0-2 Admission Request Pipeline  
+- P0-3 Wallet Binding Verification
+- P1-4 Device Uniqueness
+- P1-5 Public/Private Profile Split
+- P1-6 Moderation State
 
-```
-Identity → Market → Escrow → Settlement → Reputation ✅
-```
+### Phase B ✅ (6/6)
+- B1-1/B1-2 Market (Listing + Order)
+- B2-1/B2-2 Escrow (State Machine + Delivery)
+- B3-1/B3-2 Reputation (Event + Impact)
 
-**对外材料**: ✅ **COMPLETE**
-
-```
-One-Pager → Onboarding Guide → Real Cases ✅
-```
+### Adoption Assets ✅ (3/3)
+- AXI One-Pager
+- Agent Onboarding Guide
+- 3 Real Cases (13 orders, 345 AXI volume)
 
 ---
 
-## 下一阶段选项
+## 提交格式
 
-| 选项 | 内容 | 优先级 |
-|------|------|--------|
-| **Phase C** | Auction Base (拍卖系统) | P1 |
-| **Mainnet Prep** | 部署准备、安全审计 | P1 |
-| **Adoption Launch** | 对外推广、招募 agent | P2 |
-| **Governance** | 治理机制、DAO 过渡 | P3 |
+```
+commit: feat(mainnet-prep): [description]
+mainnet-target: M[1-4]-[N]
+evidence: [test results / audit report / config]
+```
+
+**示例**:
+```
+commit: feat(mainnet-prep): add SQLite persistence layer
+mainnet-target: M2-1
+evidence:
+- Migration script tested
+- Backup verified
+- Recovery test passed
+```
 
 ---
 
@@ -93,28 +97,14 @@ One-Pager → Onboarding Guide → Real Cases ✅
 
 | 路径 | 内容 |
 |------|------|
-| `PHASE_A_ACCEPTANCE.md` | Phase A 验收标准 (已完成) |
-| `PHASE_B_ACCEPTANCE.md` | Phase B 验收标准 (已完成) |
-| `docs/adoption/AXI_ONE_PAGER.md` | 一页介绍 |
-| `docs/adoption/AGENT_ONBOARDING_GUIDE.md` | 完整指南 |
-| `docs/adoption/REAL_CASES.md` | 真实案例 |
+| `PHASE_MAINNET_PREP.md` | 主网准备验收清单 |
+| `PHASE_A_ACCEPTANCE.md` | Phase A 验收 (归档) |
+| `PHASE_B_ACCEPTANCE.md` | Phase B 验收 (归档) |
+| `docs/adoption/` | 对外 adoption 资产 |
 | `docs/architecture/` | 架构文档 |
 | `docs/identity/` | 身份政策 |
 
 ---
 
-## Git 提交历史
-
-```
-31aa597 docs(adoption): Add Adoption Team assets                    [ADOPTION ✅]
-d0422af feat(phase-b): implement reputation event write-back        [B3 ✅]
-aaf7392 feat(phase-b): implement escrow state machine               [B2 ✅]
-6a61705 feat(phase-b): implement market listing and order skeleton  [B1 ✅]
-381db11 feat(phase-a): implement identity registry...               [Phase A ✅]
-...
-```
-
----
-
-**当前状态**: Phase A + Phase B + Adoption Assets 全部完成 ✅  
-**等待**: 下一阶段决策 (Phase C / Mainnet / Adoption Launch)
+**当前状态**: Mainnet Prep 进行中，等待安全审计与运行稳定性实现。  
+**验收员**: 就绪，等待 `mainnet-prep` 类型提交。

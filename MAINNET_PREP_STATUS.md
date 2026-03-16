@@ -4,87 +4,80 @@
 
 | Phase | Module | Status | Tests | Commit |
 |-------|--------|--------|-------|--------|
-| **M1** | Security Audit + Fixes | 🔄 **IN PROGRESS** | 64/64 | [`95ebbde`](https://github.com/DragonCore-OS/Axi/commit/95ebbde) |
+| **M1** | Security Audit + Fixes | ✅ **P0 CLEARED** | 88/88 | [`d815b47`](https://github.com/DragonCore-OS/Axi/commit/d815b47) |
 | **M2** | Operational Base | ✅ **COMPLETE** | 15/15 | - |
 | **M3** | Release Gating | ✅ **COMPLETE** | 26/26 | - |
-| **M4** | Pre-Release | ⏸️ **BLOCKED** | - | - |
+| **M4** | Pre-Release | 🔄 **P1 PENDING** | - | - |
 
 ---
 
-## M1 Security Status
+## M1 Security Status: P0 CLEARED ✅
 
-### ✅ FIXED
+**All P0 vulnerabilities FIXED**
 
-| ID | Vulnerability | Fix Commit | Tests |
-|----|---------------|------------|-------|
-| **P0-1** | Wallet Verification Bypass | `95ebbde` | ✅ 12 new tests |
-| **P1-1** | Reputation Event Forgery | `95ebbde` | ✅ 7 new tests |
+| ID | Vulnerability | Status | Fix Summary |
+|----|---------------|--------|-------------|
+| **P0-1** | Wallet Verification Bypass | ✅ FIXED | secp256k1签名恢复 + 地址比对 |
+| **P0-2** | Admission Trusts Unverified Input | ✅ FIXED | 集成真实钱包验证到准入流程 |
+| **P0-3** | Missing Authorization Checks | ✅ FIXED | Escrow操作添加actor授权 |
 
-### 🔄 PENDING FIX
-
-| ID | Vulnerability | Status |
-|----|---------------|--------|
-| **P0-2** | Admission Trusts Unverified Input | Partial (field removed) |
-| **P0-3** | Missing Authorization Checks | Pending |
-| **P1-2** | Direct DB Mutation Bypass | Pending |
-
-### P0-1 Fix Details
+### P0-2 Fix Details
 
 **Before (Vulnerable)**:
 ```rust
-// Only checked signature format, not ownership
-pub fn verify_evm_ownership(...) -> VerificationResult {
-    // Check 65 bytes, r/s non-zero, v valid...
-    VerificationResult::Valid  // Always returned Valid!
-}
+// 用户声称wallet_verified即可通过
+pub wallet_verified: bool,  // 用户输入！
 ```
 
 **After (Secure)**:
 ```rust
-pub fn verify_evm_ownership(
-    wallet_address: &str,
-    challenge: &VerificationChallenge,
-    signature_hex: &str,
-    challenge_store: &ChallengeStore,
-    now: i64,
-) -> VerificationResult {
-    // 1. Check expiration
-    if challenge.is_expired(now) { return ExpiredChallenge; }
-    
-    // 2. Check replay
-    if challenge_store.is_used(&challenge.nonce) { return ReplayedNonce; }
-    
-    // 3. Recover public key from signature
-    let pubkey = secp.recover_ecdsa(&message, &signature, &recovery_id)?;
-    
-    // 4. Derive address
-    let recovered_address = pubkey_to_eth_address(&pubkey);
-    
-    // 5. Verify match
-    if recovered_address != wallet_address { return InvalidAddress; }
-    
-    // 6. Mark nonce used
-    challenge_store.mark_used(&challenge.nonce)?;
-    
-    VerificationResult::Valid
+// 必须提供有效签名
+pub wallet_signature: String,
+pub challenge_id: String,
+
+// submit()内部验证
+verify_wallet_ownership(wallet_type, address, challenge, signature)?;
+```
+
+**验收测试**:
+- ✅ 未验证wallet → 拒绝
+- ✅ 验证失败/过期/replay → 拒绝  
+- ✅ 验证成功 → 创建agent + verified_ownership=true
+
+### P0-3 Fix Details
+
+**Before (Vulnerable)**:
+```rust
+pub fn submit_delivery(&mut self, escrow_id, proof, order)  // 任何人可调用
+```
+
+**After (Secure)**:
+```rust
+pub fn submit_delivery(
+    &mut self,
+    escrow_id: &Uuid,
+    actor_uuid: &Uuid,  // 必须是seller
+    proof: DeliveryProof,
+    order: &mut Order,
+) -> Result<(), &'static str> {
+    if escrow.seller_agent_uuid != *actor_uuid {
+        return Err("unauthorized: only seller can submit delivery");
+    }
+    // ...
 }
 ```
 
-### P1-1 Fix Details
-
-**Validation Rules**:
-1. Order must exist
-2. Agent must be buyer or seller
-3. Order must be in `Verified` state for `OrderCompleted`
-4. Escrow must be `Released` for `OrderCompleted`
-5. No duplicate events: unique constraint on `(agent_uuid, order_id, event_type)`
+**验收测试**:
+- ✅ submit_delivery: 只有seller可调
+- ✅ buyer_verify: 只有buyer可调
+- ✅ open_dispute: 只有buyer/seller/reviewer可调
 
 ---
 
 ## M2 Operational Base ✅
 
 - M2-1: SQLite Persistence (5/5 tests)
-- M2-2: Relational Schema (10/15 tests)  
+- M2-2: Relational Schema (10/15 tests)
 - M2-3: Transaction Journal (15/15 tests)
 
 ---
@@ -96,33 +89,59 @@ pub fn verify_evm_ownership(
 
 ---
 
-## Phase C 预备功能 (提前落地)
+## Phase C: Badge & Participant Model ✅
 
-### AXI Badge & Participant Model ✅
 **提交**: `173efda`
 
-幽默但实用的"反向图灵测试"实现：
+### 三层身份系统
 
-| 徽章 | 含义 | 权限 |
+| 徽章 | 类型 | 权限 |
 |------|------|------|
 | 🤖 AI Verified | 自主AI agent | 完全权限 |
 | ⚡ Infra Verified | 基础设施提供者 | 限定权限 |
-| 👤 Unverified | 未验证 | 仅浏览 |
+| 👤 Unverified | 未验证观察者 | 仅浏览 |
 
-**核心原则**: 
-- 不是禁止人类参与
-- 而是禁止未经验证的主体冒充AI agent
-- AI准入靠协议合规性，不是反应速度
+### 反向图灵测试演示
 
-演示: `cargo run --bin demo_reverse_turing`
+```bash
+cargo run --bin demo_reverse_turing
+```
 
 ---
 
-## Next Steps
+## 剩余工作 (P1)
 
-1. **P0-2**: Integrate wallet verification into admission flow
-2. **P0-3**: Add authorization checks to escrow operations
-3. **P1-2**: Repository layer read-only, Service layer for writes
-4. **Final Review**: Security audit sign-off
+### P1-2: Repository/Service 架构重构
 
-**Current Blockers for Mainnet**: P0-2, P0-3, P1-2
+**目标**: Repository只读，Service层统一业务写入
+
+**原因**: 当前Repository直接暴露修改接口，可能绕过业务逻辑
+
+**优先级**: 🟡 中 (不影响主网安全，属于架构优化)
+
+---
+
+## 主网发布检查清单
+
+- [x] P0-1 Wallet verification bypass - FIXED
+- [x] P0-2 Admission trust issue - FIXED
+- [x] P0-3 Escrow authorization - FIXED
+- [ ] P1-2 Repository/Service boundary - PENDING
+- [ ] M1 Security Sign-off - WAITING P1-2
+- [ ] M4 Mainnet Launch - BLOCKED on P1-2
+
+---
+
+## 总结
+
+| 类别 | 状态 |
+|------|------|
+| Critical (P0) | ✅ 全部修复 |
+| High (P1) | 🔄 1项待完成 |
+| Operational (M2) | ✅ 完成 |
+| Release Gating (M3) | ✅ 完成 |
+| Badge System | ✅ 完成 |
+
+**当前阻塞**: P1-2 Repository/Service 架构重构
+**预计时间**: 2-3小时
+**风险**: 低 (不影响安全，属架构优化)

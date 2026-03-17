@@ -2,7 +2,7 @@
 
 **DragonCore Internal Broadcast Layer**  
 **Release Date:** 2026-03-16  
-**Status:** ✅ Production Ready
+**Status:** ✅ Ready for controlled production pilot
 
 ---
 
@@ -255,5 +255,5 @@ cp test_vectors/axi_sample.jsonl runtime_state/events/
 
 ---
 
-**DIBL v0.1 is ready for production use.**  
+**DIBL v0.1 is ready for controlled production use within verified boundaries.**  
 All 6 commits pushed to `origin/main`.

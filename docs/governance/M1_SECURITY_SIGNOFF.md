@@ -22,9 +22,9 @@
 
 | ID | 漏洞 | 状态 | 验证提交 | 备注 |
 |----|------|------|----------|------|
-| P0-1 | Wallet Verification Bypass | ✅ FIXED | `wallet_verification.rs` | secp256k1 + 地址比对 |
+| P0-1 | Wallet Verification Bypass | ✅ FIXED | `1cfb97e` | secp256k1 + Keccak-256 + 标准EVM地址 |
 | P0-2 | Admission Trusts Unverified Input | ✅ FIXED | `d815b47` | challenge-response |
-| P0-3 | Missing Authorization Checks | ✅ FIXED | `escrow.rs` | buyer/seller/reviewer 全授权 |
+| P0-3 | Missing Authorization Checks | ✅ FIXED | `4e0a138` | buyer/seller/reviewer 全授权 |
 
 ### P1 架构重构 (全部完成 ✅)
 
@@ -46,11 +46,26 @@ test result: ok. 97 passed; 0 failed; 0 ignored
 
 ### 关键测试覆盖
 
-- ✅ P0-1: Wallet verification with secp256k1 recovery + address comparison
+- ✅ P0-1: Standard EVM verification (secp256k1 + Keccak-256 + known test vectors)
 - ✅ P0-2: Admission with challenge-response
 - ✅ P0-3: Escrow authorization (buyer/seller/reviewer)
 - ✅ P1-2: Service layer 5-step sequence
 - ✅ Repository boundary enforcement
+
+### 标准 EVM 验证 (P0-1)
+
+```rust
+// 标准 EVM 地址派生流程
+1. 非压缩公钥 (65 bytes, 0x04 prefix)
+2. 移除前缀，对 64 bytes 进行 Keccak-256 哈希
+3. 取最后 20 bytes
+4. 添加 0x 前缀
+
+验证:
+- ✅ 已知私钥 → 标准 EVM 地址 (测试向量匹配)
+- ✅ 签名恢复 → 地址比对
+- ✅ challenge-response 完整流程
+```
 
 ### 已知限制 (非阻塞)
 

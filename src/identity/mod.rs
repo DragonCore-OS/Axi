@@ -24,3 +24,6 @@ pub use wallet_verification::{
     VerificationChallenge, ChallengeStore, VerificationResult,
     verify_evm_ownership, verify_axi_ownership, verify_wallet_ownership,
 };
+
+// Internal-only exports for testing
+pub(crate) use wallet_verification::pubkey_to_eth_address;

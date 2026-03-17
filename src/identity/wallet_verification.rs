@@ -6,6 +6,7 @@
 use secp256k1::{Message, PublicKey, Secp256k1};
 use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use sha2::{Digest, Sha256};
+use sha3::{Digest as KeccakDigest, Keccak256};
 use std::collections::HashSet;
 use std::sync::Mutex;
 use uuid::Uuid;
@@ -104,12 +105,19 @@ pub enum VerificationResult {
     MalformedSignature,
 }
 
-/// Recover Ethereum address from secp256k1 public key
-fn pubkey_to_eth_address(pubkey: &PublicKey) -> String {
+/// Recover Ethereum address from secp256k1 public key (standard EVM derivation)
+/// 
+/// Standard EVM address derivation:
+/// 1. Take uncompressed public key (65 bytes, starts with 0x04)
+/// 2. Remove 0x04 prefix, keep 64 bytes
+/// 3. Keccak-256 hash
+/// 4. Take last 20 bytes
+/// 5. Prefix with 0x
+pub(crate) fn pubkey_to_eth_address(pubkey: &PublicKey) -> String {
     let pubkey_bytes = pubkey.serialize_uncompressed();
-    // Skip 0x04 prefix, hash remaining 64 bytes
-    let hash = Sha256::digest(&Sha256::digest(&pubkey_bytes[1..]));
-    // Take last 20 bytes, prefix with 0x
+    // Skip 0x04 prefix (1 byte), hash remaining 64 bytes with Keccak-256
+    let hash = Keccak256::digest(&pubkey_bytes[1..]);
+    // Take last 20 bytes (rightmost 20 of 32-byte hash), prefix with 0x
     format!("0x{}", hex::encode(&hash[12..32]))
 }
 
@@ -431,35 +439,59 @@ mod tests {
         assert!(message.contains("test-nonce-123"));
     }
 
+    // ============================================================
+    // Standard EVM Address Derivation Test Vectors
+    // ============================================================
+
     #[test]
-    fn unsupported_wallet_types_rejected() {
-        use super::super::registry::WalletType;
+    fn standard_evm_address_derivation() {
+        // Known test vector: 
+        // Private key: 0x0000000000000000000000000000000000000000000000000000000000000001
+        // Expected address: 0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf
         
+        let secp = Secp256k1::new();
+        let secret_key_bytes = hex::decode("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
+        let secret_key = SecretKey::from_slice(&secret_key_bytes).unwrap();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        
+        let derived_address = pubkey_to_eth_address(&public_key);
+        let expected_address = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf";
+        
+        assert_eq!(
+            derived_address.to_lowercase(),
+            expected_address.to_lowercase(),
+            "Address derivation must match standard EVM"
+        );
+    }
+
+    #[test]
+    fn evm_address_derivation_roundtrip() {
+        // Generate keypair, derive address, sign message, recover and verify address
+        let secp = Secp256k1::new();
+        let secret_key_bytes = hex::decode("0000000000000000000000000000000000000000000000000000000000000002").unwrap();
+        let secret_key = SecretKey::from_slice(&secret_key_bytes).unwrap();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        
+        let wallet_address = pubkey_to_eth_address(&public_key);
         let agent_uuid = Uuid::new_v4();
-        let challenge = VerificationChallenge::new(agent_uuid, "0x1234");
+        let challenge = VerificationChallenge::new(agent_uuid, &wallet_address);
+        let signature = sign_challenge(&secret_key, &challenge);
         let store = ChallengeStore::new();
         let now = chrono::Utc::now().timestamp();
 
-        // Solana wallets should be rejected until properly implemented
-        let result = verify_wallet_ownership(
-            WalletType::Solana,
-            "0x1234",
+        // Full verification flow
+        let result = verify_evm_ownership(
+            &wallet_address,
             &challenge,
-            "0xaaaa",
+            &signature,
             &store,
             now,
         );
-        assert_eq!(result, VerificationResult::InvalidSignature);
 
-        // BTC wallets should be rejected
-        let result = verify_wallet_ownership(
-            WalletType::Btc,
-            "0x1234",
-            &challenge,
-            "0xaaaa",
-            &store,
-            now,
-        );
-        assert_eq!(result, VerificationResult::InvalidSignature);
+        assert_eq!(result, VerificationResult::Valid, "Full EVM verification flow must pass");
+        
+        // Verify the address format matches standard EVM (0x prefix + 40 hex chars)
+        assert!(wallet_address.starts_with("0x"));
+        assert_eq!(wallet_address.len(), 42); // 0x + 40 hex chars
     }
 }

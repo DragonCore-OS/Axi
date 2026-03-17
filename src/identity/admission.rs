@@ -191,10 +191,8 @@ mod tests {
         let secret_key = SecretKey::new(&mut rng);
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         
-        // Derive Ethereum address
-        let pubkey_bytes = public_key.serialize_uncompressed();
-        let hash = Sha256::digest(&Sha256::digest(&pubkey_bytes[1..]));
-        let address = format!("0x{}", hex::encode(&hash[12..32]));
+        // Derive Ethereum address using standard EVM derivation (Keccak-256)
+        let address = crate::identity::pubkey_to_eth_address(&public_key);
         
         (secret_key, public_key, address)
     }

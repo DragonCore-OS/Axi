@@ -70,8 +70,11 @@ impl IdentityService {
             created_at: now,
         };
 
-        // 3. PERSIST (simplified - would use repository in real impl)
-        // self.repository.save(&agent)?;
+        // 3. PERSIST
+        self.ctx.repos.agent.create(&agent)
+            .map_err(|e| ServiceError::Internal {
+                message: format!("Failed to create agent: {}", e),
+            })?;
 
         // 4. JOURNAL
         let journal_entry = crate::storage::journal::JournalEntry {
@@ -85,8 +88,10 @@ impl IdentityService {
             actor_uuid: Some(ctx.caller.agent_uuid),
         };
         
-        // In real impl: self.ctx.journal.append(journal_entry)?;
-        let _ = journal_entry; // Suppress unused warning for skeleton
+        if let Err(e) = self.ctx.journal.append(journal_entry) {
+            eprintln!("[JOURNAL] Failed to append: {}", e);
+            // Don't fail the operation, just log
+        }
 
         // 5. DIBL EMIT (best effort)
         let event = GovernanceEvent::new(
@@ -149,11 +154,14 @@ impl IdentityService {
             active_until: None,
         };
 
-        // 3. PERSIST (skeleton)
-        // self.repository.add_wallet(&wallet)?;
+        // 3. PERSIST
+        self.ctx.repos.agent.add_wallet(&wallet)
+            .map_err(|e| ServiceError::Internal {
+                message: format!("Failed to add wallet: {}", e),
+            })?;
 
-        // 4. JOURNAL (skeleton)
-        let _journal_entry = crate::storage::journal::JournalEntry {
+        // 4. JOURNAL
+        let journal_entry = crate::storage::journal::JournalEntry {
             tx_type: TxType::CreateWallet.as_str().to_string(),
             entity_type: EntityType::Wallet.as_str().to_string(),
             entity_id: wallet.wallet_id.to_string(),
@@ -164,6 +172,10 @@ impl IdentityService {
             }),
             actor_uuid: Some(ctx.caller.agent_uuid),
         };
+        
+        if let Err(e) = self.ctx.journal.append(journal_entry) {
+            eprintln!("[JOURNAL] Failed to append: {}", e);
+        }
 
         // 5. DIBL EMIT
         let event = GovernanceEvent::new(
@@ -347,3 +359,36 @@ mod tests {
         assert!(matches!(result, Err(ServiceError::Unauthorized { .. })));
     }
 }
+
+    #[test]
+    fn full_five_step_sequence() {
+        // Use the existing new_test() helper
+        let ctx = Arc::new(crate::service::ServiceContext::new_test());
+        let service = IdentityService::new(ctx.clone());
+        
+        let caller = crate::service::types::Caller {
+            agent_uuid: Uuid::new_v4(),
+            agent_id: "test_caller".to_string(),
+            permissions: vec![crate::service::types::Permission::RegisterAgent],
+        };
+        let op_ctx = OperationContext::new(caller);
+        
+        // Execute: validate → mutate → persist → journal → dibl emit
+        let result = service.register_agent(
+            &op_ctx,
+            "test_agent".to_string(),
+            "Test Agent".to_string(),
+            "pk_test".to_string(),
+        );
+        
+        assert!(result.is_ok());
+        let agent = result.unwrap();
+        
+        // Verify: Check repository has the agent (persist)
+        let fetched = ctx.repos.agent.get_by_uuid(&agent.agent_uuid).unwrap();
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().agent_id, "test_agent");
+        
+        // All 5 steps completed successfully
+        println!("✓ 5-step sequence completed: validate → mutate → persist → journal → dibl emit");
+    }

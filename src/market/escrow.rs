@@ -64,14 +64,29 @@ pub enum DisputeActor {
     Reviewer,  // Authorized dispute reviewer
 }
 
+/// Authorized dispute reviewers (UUIDs with reviewer capability)
 #[derive(Default)]
 pub struct EscrowService {
     escrows: HashMap<Uuid, EscrowRecord>,
+    authorized_reviewers: Vec<Uuid>,
 }
 
 impl EscrowService {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create with authorized reviewers
+    pub fn with_reviewers(authorized_reviewers: Vec<Uuid>) -> Self {
+        Self {
+            escrows: HashMap::new(),
+            authorized_reviewers,
+        }
+    }
+
+    /// Check if UUID is authorized reviewer
+    fn is_authorized_reviewer(&self, uuid: &Uuid) -> bool {
+        self.authorized_reviewers.contains(uuid)
     }
 
     pub fn create_for_order(&mut self, order: &Order) -> Result<EscrowRecord, &'static str> {
@@ -248,9 +263,10 @@ impl EscrowService {
                 }
             }
             DisputeActor::Reviewer => {
-                // Reviewer authorization is handled by higher-level service
-                // Here we just check if the actor claims to be a reviewer
-                // In production, this would check against authorized reviewer list
+                // Concrete authorization check against authorized reviewer list
+                if !self.is_authorized_reviewer(actor_uuid) {
+                    return Err("unauthorized: not an authorized dispute reviewer");
+                }
             }
         }
 

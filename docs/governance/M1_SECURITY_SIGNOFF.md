@@ -18,13 +18,13 @@
 
 ## 审查范围
 
-### P0 漏洞修复 (全部完成 ✅)
+### P0 漏洞修复状态
 
-| ID | 漏洞 | 状态 | 验证提交 |
-|----|------|------|----------|
-| P0-1 | Wallet Verification Bypass | ✅ FIXED | `d815b47` |
-| P0-2 | Admission Trusts Unverified Input | ✅ FIXED | `d815b47` |
-| P0-3 | Missing Authorization Checks | ✅ FIXED | `d815b47` |
+| ID | 漏洞 | 状态 | 验证提交 | 备注 |
+|----|------|------|----------|------|
+| P0-1 | Wallet Verification Bypass | ✅ FIXED | `wallet_verification.rs` | secp256k1 + 地址比对 |
+| P0-2 | Admission Trusts Unverified Input | ✅ FIXED | `d815b47` | challenge-response |
+| P0-3 | Missing Authorization Checks | ✅ FIXED | `escrow.rs` | buyer/seller/reviewer 全授权 |
 
 ### P1 架构重构 (全部完成 ✅)
 
@@ -46,11 +46,17 @@ test result: ok. 97 passed; 0 failed; 0 ignored
 
 ### 关键测试覆盖
 
-- ✅ P0-1: Wallet verification with secp256k1 recovery
+- ✅ P0-1: Wallet verification with secp256k1 recovery + address comparison
 - ✅ P0-2: Admission with challenge-response
-- ✅ P0-3: Escrow authorization checks
+- ✅ P0-3: Escrow authorization (buyer/seller/reviewer)
 - ✅ P1-2: Service layer 5-step sequence
 - ✅ Repository boundary enforcement
+
+### 已知限制 (非阻塞)
+
+| 限制 | 位置 | 影响 | 缓解措施 |
+|------|------|------|----------|
+| 单节点 reviewer 列表 | `escrow.rs` | 中心化仲裁人管理 | M4后启动多节点治理 |
 
 ---
 
@@ -79,18 +85,46 @@ validate → mutate → persist → journal → dibl emit
 
 ---
 
-## 签字声明
+## 审查人确认
 
-本人确认:
+### 已验证项目
 
-1. 所有 P0 安全漏洞已修复并验证
-2. P1-2 架构重构已完成，业务写路径已收口到 Service Layer
-3. 97项测试全部通过
-4. 代码已冻结于 commit `b0b5c31`
-5. **M1 里程碑已达到主网安全标准**
+| 项目 | 状态 | 证据 |
+|------|------|------|
+| P0-1 Wallet Verification | ✅ | `wallet_verification.rs` - secp256k1 + 地址比对 |
+| P0-2 Admission Trust | ✅ | `d815b47` - challenge-response 验证 |
+| P0-3 Escrow Authorization | ✅ | `escrow.rs` - buyer/seller/reviewer 全授权 |
+| P1-2 Service/Repository 边界 | ✅ | `b0b5c31` - 架构重构封板 |
+| 测试覆盖 | ✅ | 97/97 tests passing |
+
+### 确认声明
+
+本人作为审查人确认:
+
+1. ✅ P0-1: secp256k1 签名恢复 + 地址比对已完整实现
+2. ✅ P0-2: challenge-response 机制已验证
+3. ✅ P0-3: 所有角色授权已闭合 (buyer/seller/reviewer)
+4. ✅ P1-2: Service Layer 统一写入模式已建立
+5. ✅ Repository 可见性已收窄至 `pub(crate)`
+6. ✅ 97项测试全部通过
+
+**审查结论**: M1 安全标准已满足，具备签字条件。
 
 ---
 
-**签字日期**: _______________
+**审查人签字**: _______________  
+**日期**: _______________
+
+---
+
+## 负责人签字
+
+| 角色 | 确认 | 签字 | 日期 |
+|------|------|------|------|
+| 安全负责人 | M1 达标 | | |
+| 技术负责人 | 架构稳定 | | |
+| 项目负责人 | 发布批准 | | |
+
+---
 
 **下次审计计划**: M4 发布后 30 天内

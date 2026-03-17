@@ -7,7 +7,7 @@
 | **M1** | Security Audit + Fixes | ✅ **P0 CLEARED** | 88/88 | [`d815b47`](https://github.com/DragonCore-OS/Axi/commit/d815b47) |
 | **M2** | Operational Base | ✅ **COMPLETE** | 15/15 | - |
 | **M3** | Release Gating | ✅ **COMPLETE** | 26/26 | - |
-| **M4** | Pre-Release | 🔄 **P1 PENDING** | - | - |
+| **M4** | Pre-Release | 🔄 **READY FOR SIGN-OFF** | 97/97 | [`b0b5c31`](https://github.com/DragonCore-OS/Axi/commit/b0b5c31) |
 
 ---
 
@@ -109,15 +109,25 @@ cargo run --bin demo_reverse_turing
 
 ---
 
-## 剩余工作 (P1)
+## P1-2: Repository/Service 架构重构 ✅ COMPLETE
 
-### P1-2: Repository/Service 架构重构
+**提交**: [`b0b5c31`](https://github.com/DragonCore-OS/Axi/commit/b0b5c31)
 
-**目标**: Repository只读，Service层统一业务写入
+**完成内容**:
+- Repository traits 抽象 (Agent/Listing/Order/Escrow/Reputation)
+- In-memory implementations for testing
+- ServiceContext 注入 Repositories
+- IdentityService 完整 5 步序列实现
+- MarketService create_listing 完整实现
+- EscrowService 5 个操作完整实现
+- Repository 可见性收窄为 `pub(crate)`
 
-**原因**: 当前Repository直接暴露修改接口，可能绕过业务逻辑
+**统一写入模式**:
+```
+validate → mutate → persist → journal → dibl emit
+```
 
-**优先级**: 🟡 中 (不影响主网安全，属于架构优化)
+**测试结果**: 97 tests passing
 
 ---
 
@@ -126,9 +136,9 @@ cargo run --bin demo_reverse_turing
 - [x] P0-1 Wallet verification bypass - FIXED
 - [x] P0-2 Admission trust issue - FIXED
 - [x] P0-3 Escrow authorization - FIXED
-- [ ] P1-2 Repository/Service boundary - PENDING
-- [ ] M1 Security Sign-off - WAITING P1-2
-- [ ] M4 Mainnet Launch - BLOCKED on P1-2
+- [x] P1-2 Repository/Service boundary - **COMPLETE**
+- [ ] M1 Security Sign-off - **READY**
+- [ ] M4 Mainnet Launch - **READY FOR FINAL REVIEW**
 
 ---
 
@@ -137,11 +147,11 @@ cargo run --bin demo_reverse_turing
 | 类别 | 状态 |
 |------|------|
 | Critical (P0) | ✅ 全部修复 |
-| High (P1) | 🔄 1项待完成 |
+| High (P1) | ✅ 全部完成 |
 | Operational (M2) | ✅ 完成 |
 | Release Gating (M3) | ✅ 完成 |
 | Badge System | ✅ 完成 |
 
-**当前阻塞**: P1-2 Repository/Service 架构重构
-**预计时间**: 2-3小时
-**风险**: 低 (不影响安全，属架构优化)
+**P1-2 已完成**: Repository/Service 架构重构封板
+**M1 状态**: 等待最终签字
+**M4 状态**: 准备预发布复核

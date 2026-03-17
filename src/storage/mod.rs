@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 pub mod repos;
 pub mod journal;
 
-pub use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
+pub(crate) use repos::{AgentRepository, OrderRepository, EscrowRepository, ReputationRepository};
 pub use journal::{TransactionJournal, JournalEntry, JournalEntryBuilder, TxType, EntityType, Transaction};
 
 const CURRENT_SCHEMA_VERSION: i64 = 4;

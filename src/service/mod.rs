@@ -30,6 +30,9 @@ pub mod repositories;
 pub use repositories::{
     Repositories,
     RepositoryError, RepositoryResult,
+};
+
+pub(crate) use repositories::{
     AgentRepositoryTrait, ListingRepositoryTrait, OrderRepositoryTrait, 
     EscrowRepositoryTrait, ReputationRepositoryTrait,
     InMemoryAgentRepository, InMemoryListingRepository, InMemoryOrderRepository,

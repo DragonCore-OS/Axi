@@ -11,6 +11,8 @@ pub enum TxType {
     UpdateAgentStatus,
     UpdateAgentReputation,
     CreateWallet,
+    CreateListing,
+    UpdateListingStatus,
     CreateOrder,
     UpdateOrderStatus,
     CreateEscrow,
@@ -29,6 +31,8 @@ impl TxType {
             TxType::UpdateAgentStatus => "UpdateAgentStatus",
             TxType::UpdateAgentReputation => "UpdateAgentReputation",
             TxType::CreateWallet => "CreateWallet",
+            TxType::CreateListing => "CreateListing",
+            TxType::UpdateListingStatus => "UpdateListingStatus",
             TxType::CreateOrder => "CreateOrder",
             TxType::UpdateOrderStatus => "UpdateOrderStatus",
             TxType::CreateEscrow => "CreateEscrow",
@@ -47,6 +51,7 @@ impl TxType {
 pub enum EntityType {
     Agent,
     Wallet,
+    Listing,
     Order,
     Escrow,
     ReputationEvent,
@@ -57,6 +62,7 @@ impl EntityType {
         match self {
             EntityType::Agent => "Agent",
             EntityType::Wallet => "Wallet",
+            EntityType::Listing => "Listing",
             EntityType::Order => "Order",
             EntityType::Escrow => "Escrow",
             EntityType::ReputationEvent => "ReputationEvent",

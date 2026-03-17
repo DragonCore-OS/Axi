@@ -75,8 +75,8 @@ impl MarketService {
 
         // 4. JOURNAL
         let journal_entry = crate::storage::journal::JournalEntry {
-            tx_type: crate::storage::journal::TxType::CreateOrder.as_str().to_string(),
-            entity_type: crate::storage::journal::EntityType::Order.as_str().to_string(),
+            tx_type: crate::storage::journal::TxType::CreateListing.as_str().to_string(),
+            entity_type: crate::storage::journal::EntityType::Listing.as_str().to_string(),
             entity_id: listing.listing_id.to_string(),
             payload: serde_json::json!({
                 "seller_uuid": ctx.caller.agent_uuid.to_string(),

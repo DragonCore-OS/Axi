@@ -30,9 +30,9 @@ pub mod repositories;
 pub use repositories::{
     Repositories,
     RepositoryError, RepositoryResult,
-    AgentRepositoryTrait, OrderRepositoryTrait, 
+    AgentRepositoryTrait, ListingRepositoryTrait, OrderRepositoryTrait, 
     EscrowRepositoryTrait, ReputationRepositoryTrait,
-    InMemoryAgentRepository, InMemoryOrderRepository,
+    InMemoryAgentRepository, InMemoryListingRepository, InMemoryOrderRepository,
     InMemoryEscrowRepository, InMemoryReputationRepository,
 };
 
@@ -64,7 +64,7 @@ impl ServiceContext {
     #[cfg(test)]
     pub fn new_test() -> Self {
         use crate::governance::InMemoryEventStore;
-        use repositories::InMemoryAgentRepository;
+        use repositories::{InMemoryAgentRepository, InMemoryListingRepository};
         
         let store = Arc::new(InMemoryEventStore::new());
         let dibl = Arc::new(DiblBroadcaster::new(store));
@@ -72,6 +72,7 @@ impl ServiceContext {
         
         let repos = Repositories {
             agent: Arc::new(InMemoryAgentRepository::new()),
+            listing: Arc::new(InMemoryListingRepository::new()),
             order: Arc::new(InMemoryOrderRepository::new()),
             escrow: Arc::new(InMemoryEscrowRepository::new()),
             reputation: Arc::new(InMemoryReputationRepository::new()),

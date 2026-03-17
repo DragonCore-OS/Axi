@@ -67,9 +67,44 @@ impl MarketService {
             reason: e.to_string(),
         })?;
 
-        // 3. PERSIST (skeleton)
-        // 4. JOURNAL (skeleton)
-        // 5. DIBL EMIT (skeleton)
+        // 3. PERSIST
+        self.ctx.repos.listing.create(&listing)
+            .map_err(|e| ServiceError::Internal {
+                message: format!("Failed to create listing: {}", e),
+            })?;
+
+        // 4. JOURNAL
+        let journal_entry = crate::storage::journal::JournalEntry {
+            tx_type: crate::storage::journal::TxType::CreateOrder.as_str().to_string(),
+            entity_type: crate::storage::journal::EntityType::Order.as_str().to_string(),
+            entity_id: listing.listing_id.to_string(),
+            payload: serde_json::json!({
+                "seller_uuid": ctx.caller.agent_uuid.to_string(),
+                "title": listing.title,
+            }),
+            actor_uuid: Some(ctx.caller.agent_uuid),
+        };
+        
+        if let Err(e) = self.ctx.journal.append(journal_entry) {
+            eprintln!("[JOURNAL] Failed to append: {}", e);
+        }
+
+        // 5. DIBL EMIT
+        let event = crate::governance::GovernanceEvent::new(
+            &format!("listing-{}", listing.listing_id),
+            crate::governance::GovernanceEventType::RunCreated,
+            format!("Listing created: {}", listing.title),
+        )
+        .with_correlation(crate::governance::CorrelationContext {
+            correlation_id: Some(ctx.correlation_id.clone()),
+            parent_event_id: None,
+            actor: ctx.caller.agent_id.clone(),
+            trigger_context: Some("listing creation".to_string()),
+        });
+
+        if let Err(e) = self.ctx.dibl.publish(event) {
+            eprintln!("[DIBL] Failed to emit listing creation event: {}", e);
+        }
 
         Ok(listing)
     }

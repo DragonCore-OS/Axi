@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::identity::registry::{AgentIdentity, AgentStatus, WalletRef};
 use crate::market::order::{Order, OrderStatus};
 use crate::market::escrow::{EscrowRecord, EscrowStatus, DeliveryProof};
+use crate::market::listing::{Listing, ListingFilter};
 use crate::identity::reputation::ReputationEvent;
 
 /// Result type for repository operations
@@ -88,6 +89,27 @@ pub trait OrderRepositoryTrait: Send + Sync {
     fn list_by_seller(&self, seller_uuid: &Uuid) -> RepositoryResult<Vec<Order>>;
 }
 
+/// Listing repository operations
+pub trait ListingRepositoryTrait: Send + Sync {
+    /// Create a new listing
+    fn create(&self, listing: &Listing) -> RepositoryResult<()>;
+    
+    /// Get listing by ID
+    fn get(&self, listing_id: &Uuid) -> RepositoryResult<Option<Listing>>;
+    
+    /// Update listing availability
+    fn update_availability(&self, listing_id: &Uuid, available: bool) -> RepositoryResult<()>;
+    
+    /// Delete listing
+    fn delete(&self, listing_id: &Uuid) -> RepositoryResult<()>;
+    
+    /// Search listings with filter
+    fn search(&self, filter: &ListingFilter) -> RepositoryResult<Vec<Listing>>;
+    
+    /// List by seller
+    fn list_by_seller(&self, seller_uuid: &Uuid) -> RepositoryResult<Vec<Listing>>;
+}
+
 /// Escrow repository operations
 pub trait EscrowRepositoryTrait: Send + Sync {
     /// Create a new escrow
@@ -131,6 +153,7 @@ pub trait ReputationRepositoryTrait: Send + Sync {
 #[derive(Clone)]
 pub struct Repositories {
     pub agent: Arc<dyn AgentRepositoryTrait>,
+    pub listing: Arc<dyn ListingRepositoryTrait>,
     pub order: Arc<dyn OrderRepositoryTrait>,
     pub escrow: Arc<dyn EscrowRepositoryTrait>,
     pub reputation: Arc<dyn ReputationRepositoryTrait>,
@@ -140,12 +163,14 @@ impl Repositories {
     /// Create new repository container
     pub fn new(
         agent: Arc<dyn AgentRepositoryTrait>,
+        listing: Arc<dyn ListingRepositoryTrait>,
         order: Arc<dyn OrderRepositoryTrait>,
         escrow: Arc<dyn EscrowRepositoryTrait>,
         reputation: Arc<dyn ReputationRepositoryTrait>,
     ) -> Self {
         Self {
             agent,
+            listing,
             order,
             escrow,
             reputation,
@@ -254,6 +279,111 @@ impl AgentRepositoryTrait for InMemoryAgentRepository {
             })?;
         agent.wallets.push(wallet.clone());
         Ok(())
+    }
+}
+
+/// In-memory listing repository for testing
+pub struct InMemoryListingRepository {
+    listings: Mutex<HashMap<Uuid, Listing>>,
+}
+
+impl InMemoryListingRepository {
+    pub fn new() -> Self {
+        Self {
+            listings: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl ListingRepositoryTrait for InMemoryListingRepository {
+    fn create(&self, listing: &Listing) -> RepositoryResult<()> {
+        let mut listings = self.listings.lock().unwrap();
+        if listings.contains_key(&listing.listing_id) {
+            return Err(RepositoryError::Conflict {
+                resource: "Listing".to_string(),
+                reason: format!("Listing {} already exists", listing.listing_id),
+            });
+        }
+        listings.insert(listing.listing_id, listing.clone());
+        Ok(())
+    }
+    
+    fn get(&self, listing_id: &Uuid) -> RepositoryResult<Option<Listing>> {
+        let listings = self.listings.lock().unwrap();
+        Ok(listings.get(listing_id).cloned())
+    }
+    
+    fn update_availability(&self, listing_id: &Uuid, available: bool) -> RepositoryResult<()> {
+        let mut listings = self.listings.lock().unwrap();
+        let listing = listings.get_mut(listing_id)
+            .ok_or_else(|| RepositoryError::NotFound {
+                entity_type: "Listing".to_string(),
+                id: listing_id.to_string(),
+            })?;
+        listing.availability = if available {
+            crate::market::listing::ListingAvailability::Available
+        } else {
+            crate::market::listing::ListingAvailability::Paused
+        };
+        listing.updated_at = chrono::Utc::now().to_rfc3339();
+        Ok(())
+    }
+    
+    fn delete(&self, listing_id: &Uuid) -> RepositoryResult<()> {
+        let mut listings = self.listings.lock().unwrap();
+        listings.remove(listing_id)
+            .ok_or_else(|| RepositoryError::NotFound {
+                entity_type: "Listing".to_string(),
+                id: listing_id.to_string(),
+            })?;
+        Ok(())
+    }
+    
+    fn search(&self, filter: &ListingFilter) -> RepositoryResult<Vec<Listing>> {
+        let listings = self.listings.lock().unwrap();
+        let mut results: Vec<_> = listings.values()
+            .filter(|l| {
+                if let Some(ref t) = filter.listing_type {
+                    if &l.listing_type != t {
+                        return false;
+                    }
+                }
+                if let Some(max_price) = filter.max_price_axi {
+                    match l.pricing_model {
+                        crate::market::listing::PricingModel::Fixed => {
+                            if l.price_axi.unwrap_or(u64::MAX) > max_price {
+                                return false;
+                            }
+                        }
+                        crate::market::listing::PricingModel::UsageBased => {
+                            if l.price_per_unit_axi.unwrap_or(u64::MAX) > max_price {
+                                return false;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if let Some(ref tag) = filter.tag {
+                    if !l.tags.iter().any(|t| t == tag) {
+                        return false;
+                    }
+                }
+                true
+            })
+            .cloned()
+            .collect();
+        results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        Ok(results)
+    }
+    
+    fn list_by_seller(&self, seller_uuid: &Uuid) -> RepositoryResult<Vec<Listing>> {
+        let listings = self.listings.lock().unwrap();
+        let mut results: Vec<_> = listings.values()
+            .filter(|l| l.seller_agent_uuid == *seller_uuid)
+            .cloned()
+            .collect();
+        results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        Ok(results)
     }
 }
 

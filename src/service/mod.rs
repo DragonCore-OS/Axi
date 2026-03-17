@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 use crate::governance::DiblBroadcaster;
+// Repositories imported via pub use below
 // Journal trait placeholder for audit logging
 pub trait AuditJournal: Send + Sync {
     fn append(&self, entry: crate::storage::journal::JournalEntry) -> Result<(), String>;
@@ -25,6 +26,15 @@ pub mod identity_service;
 pub mod market_service;
 pub mod escrow_service;
 pub mod types;
+pub mod repositories;
+pub use repositories::{
+    Repositories,
+    RepositoryError, RepositoryResult,
+    AgentRepositoryTrait, OrderRepositoryTrait, 
+    EscrowRepositoryTrait, ReputationRepositoryTrait,
+    InMemoryAgentRepository, InMemoryOrderRepository,
+    InMemoryEscrowRepository, InMemoryReputationRepository,
+};
 
 use identity_service::IdentityService;
 use market_service::MarketService;
@@ -36,24 +46,38 @@ pub struct ServiceContext {
     pub dibl: Arc<DiblBroadcaster>,
     /// Audit journal for all mutations
     pub journal: Arc<dyn AuditJournal>,
+    /// Repositories for persistence
+    pub repos: Repositories,
 }
 
 impl ServiceContext {
     /// Create new context with dependencies
-    pub fn new(dibl: Arc<DiblBroadcaster>, journal: Arc<dyn AuditJournal>) -> Self {
-        Self { dibl, journal }
+    pub fn new(
+        dibl: Arc<DiblBroadcaster>,
+        journal: Arc<dyn AuditJournal>,
+        repos: Repositories,
+    ) -> Self {
+        Self { dibl, journal, repos }
     }
 
-    /// Create context for testing
+    /// Create context for testing with in-memory repositories
     #[cfg(test)]
     pub fn new_test() -> Self {
         use crate::governance::InMemoryEventStore;
+        use repositories::InMemoryAgentRepository;
         
         let store = Arc::new(InMemoryEventStore::new());
         let dibl = Arc::new(DiblBroadcaster::new(store));
         let journal: Arc<dyn AuditJournal> = Arc::new(InMemoryJournal);
         
-        Self { dibl, journal }
+        let repos = Repositories {
+            agent: Arc::new(InMemoryAgentRepository::new()),
+            order: Arc::new(InMemoryOrderRepository::new()),
+            escrow: Arc::new(InMemoryEscrowRepository::new()),
+            reputation: Arc::new(InMemoryReputationRepository::new()),
+        };
+        
+        Self { dibl, journal, repos }
     }
 }
 
